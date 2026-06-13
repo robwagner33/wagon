@@ -1,0 +1,17 @@
+{
+  "name": "Demo",
+  "tileSize": 16,
+  "spacing": 0,
+  "sheets": [
+    { "id": "tiles", "url": "tiles.png", "tileSize": 64, "spacing": 0, "tilePalette": { "cols": 9, "rows": 9 }, "gridObjects": { "cols": 9, "rows": 9, "category": "Props" } }
+  ],
+  "objectDefs": [
+    { "id": "player-spawn-1", "label": "P1 spawn", "category": "spawns", "cell": [0, 0], "color": "#ff5555", "defaultProps": { "player": 1 } }
+  ],
+  "layerDefs": [
+    { "name": "Background", "type": "tile" },
+    { "name": "Objects", "type": "object" }
+  ],
+  "defaultWidth": 40,
+  "defaultHeight": 22
+}
