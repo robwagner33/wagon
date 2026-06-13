@@ -119,6 +119,48 @@ export function distToWall(w: Wall, px: number, py: number): number {
   return Math.hypot(px - q.x, py - q.y)
 }
 
+/** Which side of wall `w` the point `from` sat on (±1), so the resolver never shoves a unit to the far side. */
+function startedSide(w: Wall, from: Vec2, fallbackSd: number): number {
+  const c = wallContact(w, from.x, from.y)
+  return Math.sign(c.body ? c.sd || fallbackSd : fallbackSd) || 1
+}
+
+/** Slide `p` along a wall's interior surface so it stays `r` clear on the side `from` started on. */
+function clearOfBody(w: Wall, from: Vec2, p: Vec2, c: WallContact, r: number): Vec2 {
+  const side = startedSide(w, from, c.sd)
+  if (side * c.sd >= r) return p
+  const push = side * r - c.sd
+  return { x: p.x + c.nx * push, y: p.y + c.ny * push }
+}
+
+/** Push `p` out of the circle of radius `r` around a wall's endpoint cap. */
+function clearOfCap(p: Vec2, c: WallContact, r: number): Vec2 {
+  if (c.sd <= 1e-9 || c.sd >= r) return p
+  const push = r - c.sd
+  return { x: p.x + c.nx * push, y: p.y + c.ny * push }
+}
+
+/** Keep `p` clear of one wall — sliding along its body, or pushing out of an endpoint cap. */
+function clearOfWall(w: Wall, from: Vec2, p: Vec2, r: number): Vec2 {
+  const c = wallContact(w, p.x, p.y)
+  return c.body ? clearOfBody(w, from, p, c, r) : clearOfCap(p, c, r)
+}
+
+/**
+ * Resolve a circle of radius `r` that moved `from`→`to` against `walls`, returning a position kept clear of
+ * every wall. Only motion along each contact normal is removed, so tangential motion survives — the unit
+ * slides along straight and curved boards alike. One-sided via `from` (the pre-move position): however hard a
+ * unit pushes, it is clamped to the side it started on and never tunnels through to the far side.
+ *
+ * Pure + deterministic: a fixed two passes in array order, so callers driving client prediction and server
+ * authority off the same `walls` agree byte-for-byte. `r` is a parameter so different bodies can reuse it.
+ */
+export function resolveWalls(walls: Wall[], from: Vec2, to: Vec2, r: number): Vec2 {
+  let p = to
+  for (let pass = 0; pass < 2; pass++) for (const w of walls) p = clearOfWall(w, from, p, r)
+  return p
+}
+
 /**
  * Build an arc through endpoints A and B that bulges toward P (P's perpendicular offset from chord AB is the
  * sagitta). Returns null when A, B, P are near-collinear (no meaningful curve — caller should fall back to a
