@@ -23,6 +23,7 @@ function wagonContent(): PluginOption {
 
 export default defineConfig({
   plugins: [solid(), wagonContent()],
+  build: { assetsDir: 'static' },
   server: { host: true, open: true, port: 5174 },
   test: {
     // Pure-logic unit tests — no DOM.
