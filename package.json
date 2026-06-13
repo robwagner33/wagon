@@ -3,19 +3,13 @@
   "private": true,
   "version": "0.0.0",
   "type": "module",
-  "engines": {
-    "node": ">=24"
+  "exports": {
+    "./core": "./src/index.ts"
   },
   "scripts": {
-    "dev": "pnpm --filter @wagon/editor dev",
-    "build": "pnpm -r run build",
-    "test": "pnpm -r run test",
-    "e2e": "pnpm --filter @wagon/editor e2e",
-    "format": "prettier --write .",
-    "lint": "oxlint"
+    "build": "tsc --noEmit"
   },
   "devDependencies": {
-    "oxlint": "^0.15.0",
-    "prettier": "^3.8.3"
+    "typescript": "^5.6.0"
   }
 }
