@@ -162,6 +162,50 @@ export function resolveWalls(walls: Wall[], from: Vec2, to: Vec2, r: number): Ve
 }
 
 /**
+ * Resolve a circle of radius `r` that moved `from`→`to` against `walls`, returning the cleared position
+ * **and a bounced velocity** — for a projectile (e.g. a puck) rather than a steerable unit.
+ *
+ * Every wall (straight **and** curved) ricochets: the velocity's component into the contact surface is
+ * reversed and scaled by `restitution` (0 = dead stop, 1 = perfectly elastic) while the tangential
+ * component survives — so a head-on hit bounces and a glancing hit slides along, on flats and arcs
+ * alike. One-sided via `from` so a fast body never tunnels to the far side. A final position-only pass
+ * settles arc↔segment junctions without re-reflecting. Pure + deterministic (fixed wall-array order).
+ */
+export function resolveBounce(
+  walls: Wall[],
+  from: Vec2,
+  to: Vec2,
+  vel: Vec2,
+  r: number,
+  restitution: number,
+): { pos: Vec2; vel: Vec2 } {
+  let pos = to
+  let v = vel
+
+  for (const w of walls) {
+    const c = wallContact(w, pos.x, pos.y)
+    if (!c.body) {
+      pos = clearOfCap(pos, c, r) // glance off a board end without a bounce
+      continue
+    }
+    const side = startedSide(w, from, c.sd)
+    if (side * c.sd >= r) continue // already clear on the side it started
+
+    const vn = v.x * c.nx + v.y * c.ny
+    if (vn * side < 0) {
+      // Reverse only the into-surface component, damped by restitution; tangential motion survives.
+      const j = (1 + restitution) * vn
+      v = { x: v.x - j * c.nx, y: v.y - j * c.ny }
+    }
+    const push = side * r - c.sd
+    pos = { x: pos.x + c.nx * push, y: pos.y + c.ny * push }
+  }
+
+  for (const w of walls) pos = clearOfWall(w, from, pos, r)
+  return { pos, vel: v }
+}
+
+/**
  * Build an arc through endpoints A and B that bulges toward P (P's perpendicular offset from chord AB is the
  * sagitta). Returns null when A, B, P are near-collinear (no meaningful curve — caller should fall back to a
  * straight segment). Oriented so its CCW sweep a0→a1 passes through P, matching what was drawn.
