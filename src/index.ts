@@ -1,4 +1,5 @@
 export * from './geom'
+export * from './tick'
 export * from './atlas'
 export * from './objects'
 export * from './map'

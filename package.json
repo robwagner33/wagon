@@ -5,6 +5,7 @@
   "type": "module",
   "exports": {
     "./core": "./src/index.ts",
+    "./net": "./src/net/index.ts",
     "./console": "./src/console/index.ts"
   },
   "scripts": {
