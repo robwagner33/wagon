@@ -12,6 +12,9 @@ export interface Sample {
   y: number
 }
 
+/** Cap on buffered position samples per remote entity (~2s at 30 Hz). Bounds memory; far exceeds the interp delay's reach. */
+export const REMOTE_BUFFER_MAX = 60
+
 /** Linearly interpolate from `a` to `b` as `frac` goes 0→1 — a straight line, no smoothing. */
 export function lerp(a: number, b: number, frac: number): number {
   return a + (b - a) * frac
