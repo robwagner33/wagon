@@ -19,13 +19,18 @@ export function arcSweep(a0: number, a1: number): number {
   return norm2pi(a1 - a0)
 }
 
-function closestOnSeg(ax: number, ay: number, bx: number, by: number, px: number, py: number): Vec2 {
+/** Projection parameter of (px, py) onto the infinite line through AB (0 = A, 1 = B); 0 for a zero-length seg. */
+function segParam(ax: number, ay: number, bx: number, by: number, px: number, py: number): number {
   const abx = bx - ax
   const aby = by - ay
   const len2 = abx * abx + aby * aby
-  let t = len2 > 0 ? ((px - ax) * abx + (py - ay) * aby) / len2 : 0
-  t = t < 0 ? 0 : t > 1 ? 1 : t
-  return { x: ax + abx * t, y: ay + aby * t }
+  return len2 > 0 ? ((px - ax) * abx + (py - ay) * aby) / len2 : 0
+}
+
+function closestOnSeg(ax: number, ay: number, bx: number, by: number, px: number, py: number): Vec2 {
+  const raw = segParam(ax, ay, bx, by, px, py)
+  const t = raw < 0 ? 0 : raw > 1 ? 1 : raw
+  return { x: ax + (bx - ax) * t, y: ay + (by - ay) * t }
 }
 
 /** The angle on the arc nearest a query at angle `ang`: the query itself inside the span, else the nearer end. */
@@ -73,11 +78,8 @@ function lineContact(ax: number, ay: number, abx: number, aby: number, px: numbe
 
 /** Contact against a segment: the line normal along its interior, or an endpoint cap past either end. */
 function segContact(ax: number, ay: number, bx: number, by: number, px: number, py: number): WallContact {
-  const abx = bx - ax
-  const aby = by - ay
-  const len2 = abx * abx + aby * aby
-  const t = len2 > 0 ? ((px - ax) * abx + (py - ay) * aby) / len2 : 0
-  if (t > 0 && t < 1) return lineContact(ax, ay, abx, aby, px, py)
+  const t = segParam(ax, ay, bx, by, px, py)
+  if (t > 0 && t < 1) return lineContact(ax, ay, bx - ax, by - ay, px, py)
   const ex = t <= 0 ? ax : bx
   const ey = t <= 0 ? ay : by
   return capContact(px - ex, py - ey)

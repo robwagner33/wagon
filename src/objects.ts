@@ -12,8 +12,8 @@ export interface MapObjectDef {
   category: string
   /** Tile sheet this object's art is drawn from (a sheet id). Omitted → it renders as a colour marker. */
   sheet?: string
-  /** Atlas cell within `sheet`. Ignored for markers (defs without a `sheet`). */
-  cell: AtlasCell
+  /** Atlas cell within `sheet`. Omitted for markers (defs without a `sheet`). */
+  cell?: AtlasCell
   /** Marker colour (per-player spawn tint, team goal, etc.). */
   color?: string
   /** Props stamped onto a freshly placed object — the editor's per-def placement defaults. */

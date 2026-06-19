@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { Vec2, Wall } from '../index'
-import { resolveBounce, resolveWalls } from '../walls'
+import { arcThrough, norm2pi, resolveBounce, resolveWalls } from '../walls'
 
 /** Collider half-extent the resolver is exercised at — matches what the games pass. */
 const R = 0.45
@@ -106,5 +106,35 @@ describe('resolveBounce', () => {
     const { pos, vel: out } = resolveBounce([arc], start, { x: start.x, y: start.y - 0.12 }, vel, R, E)
     expect(dist(pos, center)).toBeLessThanOrEqual(3 - R + 1e-9) // held off the curve
     expect(out.y).toBeLessThan(0) // still travelling along it, not reflected back down
+  })
+})
+
+describe('norm2pi', () => {
+  it('wraps angles into [0, 2π)', () => {
+    expect(norm2pi(0)).toBeCloseTo(0)
+    expect(norm2pi(Math.PI)).toBeCloseTo(Math.PI)
+    expect(norm2pi(-Math.PI / 2)).toBeCloseTo(1.5 * Math.PI)
+    expect(norm2pi(2.5 * Math.PI)).toBeCloseTo(0.5 * Math.PI)
+  })
+})
+
+describe('arcThrough', () => {
+  it('builds an arc whose rim passes through the bulge point', () => {
+    // Chord from (0,0) to (4,0), bulging up through (2,1).
+    const arc = arcThrough(0, 0, 4, 0, 2, 1, 'a')!
+    expect(arc).not.toBeNull()
+    expect(arc.kind).toBe('arc')
+    // Both endpoints and the bulge point sit on the circle.
+    expect(Math.hypot(0 - arc.cx, 0 - arc.cy)).toBeCloseTo(arc.radius)
+    expect(Math.hypot(4 - arc.cx, 4 * 0 - arc.cy)).toBeCloseTo(arc.radius)
+    expect(Math.hypot(2 - arc.cx, 1 - arc.cy)).toBeCloseTo(arc.radius)
+  })
+
+  it('returns null when the three points are near-collinear', () => {
+    expect(arcThrough(0, 0, 4, 0, 2, 0, 'a')).toBeNull()
+  })
+
+  it('returns null for a degenerate (zero-length) chord', () => {
+    expect(arcThrough(1, 1, 1, 1, 2, 2, 'a')).toBeNull()
   })
 })
