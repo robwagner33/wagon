@@ -57,6 +57,20 @@ describe('createPredictor', () => {
     expect(live.state()).toBe(6) // 0 + 2 + 5 - 1
   })
 
+  it('replays un-acked inputs in order (order-sensitive step)', () => {
+    // step is non-commutative (s*2 + d), so a wrong replay order would land on a different value.
+    const orderStep = (s: number, input: NumInput): number => s * 2 + input.d
+    const p = createPredictor<number, NumInput>(orderStep)
+    p.reconcile(0, 0)
+    p.predict((seq) => ({ seq, d: 1 })) // 0*2+1 = 1
+    p.predict((seq) => ({ seq, d: 2 })) // 1*2+2 = 4
+    const predicted = p.state() // 4
+
+    p.reconcile(0, 0) // replay [d:1, d:2] in that order → must reproduce 4, not 1*2... reversed = 0*2+2=2 then *2+1=5
+    expect(p.state()).toBe(predicted)
+    expect(p.state()).toBe(4)
+  })
+
   it('keeps two predictors independent (separate seq + queues)', () => {
     const a = createPredictor<number, NumInput>(addStep)
     const b = createPredictor<number, NumInput>(addStep)
