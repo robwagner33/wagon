@@ -4,7 +4,8 @@
   "version": "0.0.0",
   "type": "module",
   "exports": {
-    "./core": "./src/index.ts"
+    "./core": "./src/index.ts",
+    "./console": "./src/console/index.ts"
   },
   "scripts": {
     "build": "tsc --noEmit",
