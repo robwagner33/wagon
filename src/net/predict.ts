@@ -73,6 +73,12 @@ export interface RemoteBuffer {
   push(id: string, sample: Sample): void
   /** Interpolated position at server time `t` (Catmull-Rom), or null if `id` has no samples. */
   sampleAt(id: string, t: number): { pos: Vec2; moving: boolean } | null
+  /**
+   * Newest buffered position for `id`, or null if it has none. This is the freshest authoritative spot —
+   * use it for collision prediction (the server resolves against live positions), not for rendering, which
+   * wants {@link sampleAt} on the delayed playout timeline to stay smooth.
+   */
+  latest(id: string): Vec2 | null
   /** The currently-buffered entity ids — iterate these to build render lists. */
   ids(): string[]
   /** Drop an entity's buffer, e.g. when a snapshot no longer lists it. */
@@ -93,9 +99,17 @@ export function createRemoteBuffer(max: number = REMOTE_BUFFER_MAX): RemoteBuffe
     if (buffer.length > max) buffer.shift()
   }
 
+  function latest(id: string): Vec2 | null {
+    const buffer = buffers.get(id)
+    if (!buffer || !buffer.length) return null
+    const newest = buffer[buffer.length - 1]
+    return { x: newest.x, y: newest.y }
+  }
+
   return {
     push,
     sampleAt: (id, t) => sampleAt(buffers.get(id) ?? [], t),
+    latest,
     ids: () => [...buffers.keys()],
     remove: (id) => {
       buffers.delete(id)
