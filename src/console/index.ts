@@ -2,8 +2,11 @@
  * Dev console: a Quake-style overlay for local builds. A game creates one, registers its commands, and the
  * player toggles it with the backtick key to run them. Framework-agnostic (plain DOM, no deps) so any wagon
  * game can reuse it — the game decides whether to construct it (e.g. only in dev builds) and what commands
- * exist. Engine-general commands can be registered here too as the engine grows.
+ * exist. Engine-general commands can be registered here too as the engine grows. The overlay DOM and styling
+ * live in ./overlay; this file holds command registration and dispatch.
  */
+
+import { buildOverlay } from './overlay'
 
 /** A command body. Receives the whitespace-split args after the name; a returned string is logged. */
 export type CommandHandler = (args: string[]) => void | string | Promise<void | string>
@@ -25,20 +28,6 @@ export interface DevConsole {
 
 /** The key that toggles the console. Backtick is the convention and sits out of the movement keys. */
 const TOGGLE_KEY = '`'
-
-/** One-time stylesheet for the overlay — translucent dark bar pinned to the top, above the game canvas. */
-const STYLE = `
-.wagon-console { position: fixed; top: 0; left: 0; right: 0; z-index: 99999; display: none;
-  flex-direction: column; max-height: 40vh; font: 13px/1.4 ui-monospace, Menlo, Consolas, monospace;
-  background: rgba(12, 14, 20, 0.92); color: #d8dee9; border-bottom: 1px solid #3b4252; }
-.wagon-console.open { display: flex; }
-.wagon-console-log { overflow-y: auto; padding: 6px 8px; white-space: pre-wrap; }
-.wagon-console-line { color: #d8dee9; }
-.wagon-console-echo { color: #81a1c1; }
-.wagon-console-error { color: #bf616a; }
-.wagon-console-input { border: 0; outline: 0; padding: 6px 8px; background: rgba(0, 0, 0, 0.3);
-  color: #eceff4; font: inherit; border-top: 1px solid #3b4252; }
-`
 
 /** Build the dev console overlay and wire its key handling. Call once; the game keeps the returned handle. */
 export function createDevConsole(): DevConsole {
@@ -126,31 +115,4 @@ export function createDevConsole(): DevConsole {
       root.remove()
     },
   }
-}
-
-/** Create the overlay DOM (style injected once) and return its parts. */
-function buildOverlay(): { root: HTMLDivElement; log: HTMLDivElement; input: HTMLInputElement } {
-  if (!document.getElementById('wagon-console-style')) {
-    const style = document.createElement('style')
-    style.id = 'wagon-console-style'
-    style.textContent = STYLE
-    document.head.appendChild(style)
-  }
-
-  const root = document.createElement('div')
-  root.className = 'wagon-console'
-
-  const log = document.createElement('div')
-  log.className = 'wagon-console-log'
-
-  const input = document.createElement('input')
-  input.className = 'wagon-console-input'
-  input.spellcheck = false
-  input.autocomplete = 'off'
-  input.setAttribute('aria-label', 'dev console')
-
-  root.appendChild(log)
-  root.appendChild(input)
-  document.body.appendChild(root)
-  return { root, log, input }
 }
