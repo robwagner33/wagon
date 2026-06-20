@@ -7,9 +7,8 @@ const CLOCK_SMOOTHING = 0.05
 /** Re-sync the clock hard (no easing) when it drifts this far, e.g. after a tab stall. */
 const CLOCK_RESYNC_MS = 250
 
-/** Adaptive playout buffer: render remotes this far in the past, sized to measured jitter. */
+/** Adaptive playout buffer: render remotes this far in the past, sized to jitter. Base doubles as the floor. */
 const INTERP_BASE_MS = 3 * TICK_MS
-const INTERP_MIN_MS = 3 * TICK_MS
 const INTERP_MAX_MS = 300
 
 /** How many jitter-widths of margin the delay carries above the base. */
@@ -62,7 +61,7 @@ export function createClock(): NetClock {
       const expected = TICK_MS * (serverTick - lastTick)
       const deviation = localNow - lastArrival - expected
       jitter += (Math.abs(deviation) - jitter) * JITTER_GAIN
-      const targetDelay = clamp(INTERP_BASE_MS + JITTER_K * jitter, INTERP_MIN_MS, INTERP_MAX_MS)
+      const targetDelay = clamp(INTERP_BASE_MS + JITTER_K * jitter, INTERP_BASE_MS, INTERP_MAX_MS)
       interpDelay += (targetDelay - interpDelay) * DELAY_EASE
     }
 

@@ -121,10 +121,19 @@ export function distToWall(w: Wall, px: number, py: number): number {
   return Math.hypot(px - q.x, py - q.y)
 }
 
-/** Which side of wall `w` the point `from` sat on (±1), so the resolver never shoves a unit to the far side. */
+/**
+ * Which side of wall `w` the point `from` sat on (±1). Uses `from`'s own signed distance, falling back to the
+ * caller's `fallbackSd` when `from` sits exactly on the wall (sd 0, or a cap with no side), and defaulting to
+ * +1 when even that is 0 — so the resolver always has a definite side to clamp to.
+ */
 function startedSide(w: Wall, from: Vec2, fallbackSd: number): number {
   const c = wallContact(w, from.x, from.y)
   return Math.sign(c.body ? c.sd || fallbackSd : fallbackSd) || 1
+}
+
+/** Offset `p` by `push` along contact normal `c`; moving along the normal changes the signed distance by `push`. */
+function pushAlong(p: Vec2, c: WallContact, push: number): Vec2 {
+  return { x: p.x + c.nx * push, y: p.y + c.ny * push }
 }
 
 /** Slide `p` along a wall's interior surface so it stays `r` clear on the side `from` started on. */
@@ -132,14 +141,14 @@ function clearOfBody(w: Wall, from: Vec2, p: Vec2, c: WallContact, r: number): V
   const side = startedSide(w, from, c.sd)
   if (side * c.sd >= r) return p
   const push = side * r - c.sd
-  return { x: p.x + c.nx * push, y: p.y + c.ny * push }
+  return pushAlong(p, c, push)
 }
 
 /** Push `p` out of the circle of radius `r` around a wall's endpoint cap. */
 function clearOfCap(p: Vec2, c: WallContact, r: number): Vec2 {
   if (c.sd <= 1e-9 || c.sd >= r) return p
   const push = r - c.sd
-  return { x: p.x + c.nx * push, y: p.y + c.ny * push }
+  return pushAlong(p, c, push)
 }
 
 /** Keep `p` clear of one wall — sliding along its body, or pushing out of an endpoint cap. */
@@ -200,7 +209,7 @@ export function resolveBounce(
       v = { x: v.x - j * c.nx, y: v.y - j * c.ny }
     }
     const push = side * r - c.sd
-    pos = { x: pos.x + c.nx * push, y: pos.y + c.ny * push }
+    pos = pushAlong(pos, c, push)
   }
 
   for (const w of walls) pos = clearOfWall(w, from, pos, r)
