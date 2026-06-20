@@ -8,3 +8,11 @@ export interface Vec2 {
 export function clamp(value: number, min: number, max: number): number {
   return Math.min(Math.max(value, min), max)
 }
+
+/**
+ * Smoothstep easing on `t` (expects 0…1): eases in and eases out — `3t² − 2t³`. Pair with {@link clamp}
+ * first if the input may leave the unit range.
+ */
+export function smoothstep(t: number): number {
+  return t * t * (3 - 2 * t)
+}

@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
-import { createPredictor, createRemoteBuffer } from '../predict'
+import { createPredictor, createRemoteBuffer, createSelfPredictor } from '../predict'
 import { REMOTE_BUFFER_MAX, type Sample } from '../interpolate'
+import type { Vec2 } from '../../geom'
 
 /** A trivial deterministic step over a numeric state: add the input's delta. Stands in for game physics. */
 interface NumInput {
@@ -130,5 +131,46 @@ describe('createRemoteBuffer', () => {
     players.push('1', { t: 0, x: 0, y: 0 })
     expect(players.ids()).toEqual(['1'])
     expect(enemies.ids()).toEqual([]) // the same id in another instance doesn't leak
+  })
+})
+
+describe('createSelfPredictor', () => {
+  interface PosState {
+    pos: Vec2
+  }
+  /** Slide the position east by the input's delta — a stand-in for a game's per-tick advance. */
+  const slide = (s: PosState, input: NumInput): PosState => ({ pos: { x: s.pos.x + input.d, y: s.pos.y } })
+
+  it('predicts forward and snaps the sim to the authoritative state on reconcile', () => {
+    const sp = createSelfPredictor<PosState, NumInput>(slide, { timeConstant: 0.05, snapDist: 10 })
+    sp.reconcile({ pos: { x: 0, y: 0 } }, 0)
+    const input = sp.predict((seq) => ({ seq, d: 5 }))
+    expect(input.seq).toBe(1)
+    expect(sp.state()!.pos.x).toBe(5)
+
+    // Server resolved the (acked) input differently — the sim hard-snaps to truth, physics stays authoritative.
+    sp.reconcile({ pos: { x: 3, y: 0 } }, 1)
+    expect(sp.state()!.pos.x).toBe(3)
+  })
+
+  it('carries the predicted-vs-truth correction as a render offset that decays to zero', () => {
+    const sp = createSelfPredictor<PosState, NumInput>(slide, { timeConstant: 0.05, snapDist: 10 })
+    sp.reconcile({ pos: { x: 0, y: 0 } }, 0)
+    sp.predict((seq) => ({ seq, d: 5 })) // predicts x=5
+    sp.reconcile({ pos: { x: 3, y: 0 } }, 1) // truth is x=3 → 2-tile correction
+
+    const off0 = sp.renderOffset(0)
+    expect(off0.x).toBeCloseTo(2) // sim at 3, sprite still shown +2 toward the old prediction
+    const off1 = sp.renderOffset(1) // a second later it has eased out
+    expect(Math.abs(off1.x)).toBeLessThan(0.01)
+  })
+
+  it('leaves no offset when the prediction matched truth (replay reproduces it)', () => {
+    const sp = createSelfPredictor<PosState, NumInput>(slide, { timeConstant: 0.05, snapDist: 10 })
+    sp.reconcile({ pos: { x: 0, y: 0 } }, 0)
+    sp.predict((seq) => ({ seq, d: 5 }))
+    sp.reconcile({ pos: { x: 0, y: 0 } }, 0) // nothing acked: replays the d:5 input onto 0 → back to 5
+    expect(sp.state()!.pos.x).toBe(5)
+    expect(sp.renderOffset(0).x).toBe(0)
   })
 })
