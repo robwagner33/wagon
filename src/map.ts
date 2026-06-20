@@ -36,6 +36,9 @@ export interface MapObject {
   x: number
   y: number
   rotation?: number
+  /** Mirror the object's art horizontally / vertically (omitted when false). */
+  flipX?: boolean
+  flipY?: boolean
   props?: Record<string, unknown>
 }
 
