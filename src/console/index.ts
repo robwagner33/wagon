@@ -33,6 +33,7 @@ const TOGGLE_KEY = '`'
 export function createDevConsole(): DevConsole {
   const commands = new Map<string, Command>()
   const { root, log, input } = buildOverlay()
+  let lastCommand = ''
 
   function open(): void {
     root.classList.add('open')
@@ -60,8 +61,17 @@ export function createDevConsole(): DevConsole {
 
   /** Parse and run one entered line: echo it, dispatch by command name, log the result or error. */
   async function run(line: string): Promise<void> {
-    const trimmed = line.trim()
+    let trimmed = line.trim()
     if (!trimmed) return
+    if (trimmed === '!!') {
+      if (!lastCommand) {
+        print(`> !!`, 'echo')
+        print('no previous command', 'error')
+        return
+      }
+      trimmed = lastCommand
+    }
+    lastCommand = trimmed
     print(`> ${trimmed}`, 'echo')
     const [name, ...args] = trimmed.split(/\s+/)
     const command = commands.get(name)
