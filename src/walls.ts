@@ -41,9 +41,13 @@ function nearestArcAngle(w: WallArc, ang: number): number {
   return rel - sweep < TAU - rel ? w.a1 : w.a0
 }
 
+/** The point on the arc's circle at angle `ang`. */
+function pointOnArc(w: WallArc, ang: number): Vec2 {
+  return { x: w.cx + w.radius * Math.cos(ang), y: w.cy + w.radius * Math.sin(ang) }
+}
+
 function closestOnArc(w: WallArc, px: number, py: number): Vec2 {
-  const useAng = nearestArcAngle(w, Math.atan2(py - w.cy, px - w.cx))
-  return { x: w.cx + w.radius * Math.cos(useAng), y: w.cy + w.radius * Math.sin(useAng) }
+  return pointOnArc(w, nearestArcAngle(w, Math.atan2(py - w.cy, px - w.cx)))
 }
 
 /** Closest point on a wall primitive to (px, py): segment projection or arc radial projection, clamped. */
@@ -99,7 +103,8 @@ function arcContact(w: WallArc, px: number, py: number): WallContact {
   const ang = Math.atan2(py - w.cy, px - w.cx)
   const onArc = nearestArcAngle(w, ang)
   if (onArc === ang) return radialContact(w.cx, w.cy, w.radius, px, py)
-  return capContact(px - (w.cx + w.radius * Math.cos(onArc)), py - (w.cy + w.radius * Math.sin(onArc)))
+  const cap = pointOnArc(w, onArc)
+  return capContact(px - cap.x, py - cap.y)
 }
 
 /** A one-sided distance cap around an endpoint: always-positive distance, normal radially out from it. */

@@ -20,6 +20,46 @@ export interface HostTransport<TInput, TMsg, TSnapshot> {
   broadcast(snap: TSnapshot): void
 }
 
+/** The four peer-event callbacks a host transport fires; lazy no-ops until a host loop registers real ones. */
+export interface HostCallbacks<TInput, TMsg> {
+  join: (id: string) => void
+  leave: (id: string) => void
+  input: (id: string, input: TInput) => void
+  message: (id: string, msg: TMsg) => void
+}
+
+/**
+ * The shared callback-holder every host transport needs: no-op slots for the four peer events plus the
+ * matching `onPeer*`/`on*` setters that fill them. A transport fires `cb.join(id)` etc. from its wire
+ * events and spreads `register` into its {@link HostTransport}, instead of re-declaring the boilerplate.
+ */
+export function makeHostCallbacks<TInput, TMsg>(): {
+  cb: HostCallbacks<TInput, TMsg>
+  register: Pick<HostTransport<TInput, TMsg, unknown>, 'onPeerJoin' | 'onPeerLeave' | 'onInput' | 'onMessage'>
+} {
+  const cb: HostCallbacks<TInput, TMsg> = {
+    join: () => {},
+    leave: () => {},
+    input: () => {},
+    message: () => {},
+  }
+  const register = {
+    onPeerJoin: (fn: (id: string) => void) => {
+      cb.join = fn
+    },
+    onPeerLeave: (fn: (id: string) => void) => {
+      cb.leave = fn
+    },
+    onInput: (fn: (id: string, input: TInput) => void) => {
+      cb.input = fn
+    },
+    onMessage: (fn: (id: string, msg: TMsg) => void) => {
+      cb.message = fn
+    },
+  }
+  return { cb, register }
+}
+
 /** The client side of a transport: how game code reaches the host and receives snapshots. */
 export interface NetClient<TInput, TMsg, TSnapshot> {
   /** This client's player id, or null until the transport establishes one. */

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { Vec2, Wall } from '../index'
-import { arcThrough, norm2pi, resolveBounce, resolveWalls } from '../walls'
+import { arcSweep, arcThrough, norm2pi, resolveBounce, resolveWalls } from '../walls'
 
 /** Collider half-extent the resolver is exercised at — matches what the games pass. */
 const R = 0.45
@@ -136,5 +136,24 @@ describe('arcThrough', () => {
 
   it('returns null for a degenerate (zero-length) chord', () => {
     expect(arcThrough(1, 1, 1, 1, 2, 2, 'a')).toBeNull()
+  })
+
+  // The midpoint of the CCW sweep a0→a1 — where the arc bulges.
+  const sweepMidpoint = (arc: { cx: number; cy: number; radius: number; a0: number; a1: number }) => {
+    const mid = arc.a0 + arcSweep(arc.a0, arc.a1) / 2
+    return { x: arc.cx + arc.radius * Math.cos(mid), y: arc.cy + arc.radius * Math.sin(mid) }
+  }
+
+  it('orients the sweep so it bulges toward the given point, regardless of side', () => {
+    const up = arcThrough(0, 0, 4, 0, 2, 1, 'a')! // chord on the x-axis, bulge above
+    expect(sweepMidpoint(up).y).toBeGreaterThan(0)
+    const down = arcThrough(0, 0, 4, 0, 2, -1, 'a')! // same chord, bulge below
+    expect(sweepMidpoint(down).y).toBeLessThan(0)
+  })
+
+  it('gives a larger radius for a shallower bulge', () => {
+    const shallow = arcThrough(0, 0, 4, 0, 2, 0.5, 'a')!
+    const deep = arcThrough(0, 0, 4, 0, 2, 2, 'a')!
+    expect(shallow.radius).toBeGreaterThan(deep.radius)
   })
 })

@@ -107,9 +107,7 @@ export function tileLayers(map: MapDoc): TileLayer[] {
 
 /** Every object across all object layers (ignores editor visibility — that's display-only). */
 export function mapObjects(map: MapDoc): MapObject[] {
-  const out: MapObject[] = []
-  for (const layer of map.layers) if (layer.type === 'object') out.push(...layer.objects)
-  return out
+  return map.layers.flatMap((l) => (l.type === 'object' ? l.objects : []))
 }
 
 /** Objects whose `def` starts with `prefix` (e.g. all `player-spawn-*`). */
