@@ -1,9 +1,14 @@
 import { describe, expect, it } from 'vitest'
-import { resolveBlocked, resolveBodies, resolveCircles, type CircleBody } from '../bodies'
+import { resolveBlocked, resolveBodies, resolveCircleRect, resolveCircles, type CircleBody, type RectBody } from '../bodies'
 
 /** A circular body at `pos` moving at `vel`, radius 0.5, with the given inverse mass (0 = immovable). */
 function body(pos: { x: number; y: number }, vel: { x: number; y: number }, invMass: number): CircleBody {
   return { pos, vel, r: 0.5, invMass }
+}
+
+/** An immovable box at `pos` with half-extents `half`, rotated by `angle` (default axis-aligned). */
+function rect(pos: { x: number; y: number }, half: { x: number; y: number }, angle = 0): RectBody {
+  return { pos, half, angle, invMass: 0 }
 }
 
 describe('resolveCircles', () => {
@@ -89,7 +94,57 @@ describe('resolveBodies', () => {
   })
 })
 
+describe('resolveCircleRect', () => {
+  it('leaves a circle clear of the box unchanged', () => {
+    const circle = body({ x: 3, y: 0 }, { x: -1, y: 0 }, 1) // 2 from the +x face, radius 0.5
+    const box = rect({ x: 0, y: 0 }, { x: 1, y: 1 })
+    const out = resolveCircleRect(circle, box, 0.25)
+    expect(out.pos).toEqual(circle.pos)
+    expect(out.vel).toEqual(circle.vel)
+  })
+
+  it('pushes a circle out of a face and reflects it by restitution', () => {
+    const circle = body({ x: 1.3, y: 0 }, { x: -1, y: 0 }, 1) // overlapping the +x face by 0.2
+    const box = rect({ x: 0, y: 0 }, { x: 1, y: 1 })
+    const out = resolveCircleRect(circle, box, 0.25)
+    expect(out.pos.x).toBeCloseTo(1.5) // face at x=1 + radius 0.5
+    expect(out.vel.x).toBeCloseTo(0.25) // -1 reversed × 0.25 restitution
+  })
+
+  it('slides along a face, keeping the tangential velocity', () => {
+    const circle = body({ x: 1.3, y: 0 }, { x: -1, y: 0.5 }, 1)
+    const box = rect({ x: 0, y: 0 }, { x: 1, y: 1 })
+    const out = resolveCircleRect(circle, box, 0)
+    expect(out.vel.x).toBeCloseTo(0) // blocked along the normal
+    expect(out.vel.y).toBeCloseTo(0.5) // tangential drift survives
+  })
+
+  it('ejects a circle whose center is inside the box through the nearest face', () => {
+    const circle = body({ x: 0.3, y: 0 }, { x: 0, y: 0 }, 1) // inside, nearest the +x face
+    const box = rect({ x: 0, y: 0 }, { x: 1, y: 1 })
+    const out = resolveCircleRect(circle, box, 0)
+    expect(out.pos.x).toBeCloseTo(1.5) // shoved clear of the +x face
+    expect(out.pos.y).toBeCloseTo(0)
+  })
+
+  it("honors the box's rotation — a turned thin box blocks along its rotated extent", () => {
+    const circle = body({ x: 0, y: 1.3 }, { x: 0, y: -1 }, 1) // approaching from +y
+    const box = rect({ x: 0, y: 0 }, { x: 1, y: 0.2 }, Math.PI / 2) // thin box turned to lie along y
+    const out = resolveCircleRect(circle, box, 0)
+    expect(out.pos.y).toBeCloseTo(1.5) // rotated long extent (1) reaches y=1, + radius 0.5
+    expect(out.vel.y).toBeCloseTo(0) // stopped along the rotated face normal
+  })
+})
+
 describe('resolveBlocked', () => {
+  it('blocks self against a rect blocker via the generic body dispatch', () => {
+    const self = body({ x: 1.3, y: 0 }, { x: -1, y: 0 }, 1)
+    const box = rect({ x: 0, y: 0 }, { x: 1, y: 1 })
+    resolveBlocked(self, [box], 0)
+    expect(self.pos.x).toBeCloseTo(1.5) // pushed clear of the +x face
+    expect(self.vel.x).toBeCloseTo(0) // dead stop at restitution 0
+  })
+
   it('hard-stops self against a blocker without moving it, even with a movable inverse mass', () => {
     const self = body({ x: 0.2, y: 0 }, { x: 1, y: 0 }, 1) // moving into the blocker
     const blocker = body({ x: 1, y: 0 }, { x: 0, y: 0 }, 1) // movable invMass, but treated as immovable

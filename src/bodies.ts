@@ -1,4 +1,4 @@
-import type { Vec2 } from './geom'
+import { clamp, type Vec2 } from './geom'
 
 /**
  * Body↔body collision: the moving counterpart to `resolveWalls`/`resolveBounce` (which collide a body
@@ -88,21 +88,100 @@ export function resolveBodies(bodies: CircleBody[], restitution: number): void {
   }
 }
 
+/** A physical body of any shape — a circle or an oriented box. Both carry pos/vel/invMass; the shape fields differ. */
+export type Body = CircleBody | RectBody
+
 /**
- * Resolve one movable body against a set of immovable blockers, mutating only `self`. Each blocker is
- * treated as infinite-mass (the resolver never moves it, the role a wall plays), so `self` takes the full
- * push-out and impulse — a hard, non-penetrating stop that still slides tangentially along the blocker.
+ * Resolve one movable circle against a set of immovable bodies — circles or boxes — mutating only `self`.
+ * Each blocker is treated as infinite-mass (the resolver never moves it, the role a wall plays), so `self`
+ * takes the full push-out and impulse — a hard, non-penetrating stop that still slides tangentially along it.
  *
  * This is the client-prediction counterpart to {@link resolveBodies}: a client predicting its own body can
  * block against the other bodies' best-known positions (instant, local, no round-trip) while the server
  * does the real mutual {@link resolveBodies} pass and arbitrates. Blocker velocity is honored, so a blocker
  * receding faster than `self` approaches imparts no impulse. Pure given the inputs.
  */
-export function resolveBlocked(self: CircleBody, blockers: CircleBody[], restitution: number): void {
+export function resolveBlocked(self: CircleBody, blockers: Body[], restitution: number): void {
   for (const blocker of blockers) {
+    if ('half' in blocker) {
+      const { pos, vel } = resolveCircleRect(self, blocker, restitution)
+      self.pos = pos
+      self.vel = vel
+      continue
+    }
     const immovable: CircleBody = { pos: blocker.pos, vel: blocker.vel, r: blocker.r, invMass: 0 }
     const { a } = resolveCircles(self, immovable, restitution)
     self.pos = a.pos
     self.vel = a.vel
   }
+}
+
+/**
+ * An oriented box collider: center, half-extents (half width/height before rotation), `angle` in radians,
+ * and inverse mass (`0` = immovable, the only mode the circle↔rect resolver supports today — a static
+ * obstacle like a shop stall or a crate). Axis-aligned is just `angle: 0`.
+ */
+export interface RectBody {
+  pos: Vec2
+  half: Vec2
+  angle: number
+  invMass: number
+}
+
+/**
+ * Resolve a movable circle against an immovable oriented box, returning the circle's separated position and
+ * post-impulse velocity (the box never moves). The circle's center is rotated into the box's local frame,
+ * clamped to the box extents to find the closest surface point, then pushed back out along that contact
+ * normal — the same separation + closing-impulse rule as {@link resolveCircles}, so a glancing hit slides.
+ * A center driven inside the box is ejected through its nearest face. Pure + deterministic.
+ */
+export function resolveCircleRect(circle: CircleBody, rect: RectBody, restitution: number): { pos: Vec2; vel: Vec2 } {
+  const unchanged = { pos: circle.pos, vel: circle.vel }
+  const cos = Math.cos(rect.angle)
+  const sin = Math.sin(rect.angle)
+  // Circle center relative to the box, rotated into the box's local (axis-aligned) frame.
+  const dx = circle.pos.x - rect.pos.x
+  const dy = circle.pos.y - rect.pos.y
+  const lx = dx * cos + dy * sin
+  const ly = -dx * sin + dy * cos
+
+  const clx = clamp(lx, -rect.half.x, rect.half.x)
+  const cly = clamp(ly, -rect.half.y, rect.half.y)
+  const offx = lx - clx
+  const offy = ly - cly
+  const dist = Math.hypot(offx, offy)
+
+  let nlx: number
+  let nly: number
+  let overlap: number
+  if (dist > 1e-9) {
+    if (dist >= circle.r) return unchanged // closest surface point is outside the circle: no contact
+    nlx = offx / dist
+    nly = offy / dist
+    overlap = circle.r - dist
+  } else {
+    // Center is inside the box: eject through whichever face it's nearest, breaking ties toward x.
+    const penX = rect.half.x - Math.abs(lx)
+    const penY = rect.half.y - Math.abs(ly)
+    if (penX <= penY) {
+      nlx = lx < 0 ? -1 : 1
+      nly = 0
+      overlap = penX + circle.r
+    } else {
+      nlx = 0
+      nly = ly < 0 ? -1 : 1
+      overlap = penY + circle.r
+    }
+  }
+
+  // Rotate the local contact normal back into world space.
+  const nx = nlx * cos - nly * sin
+  const ny = nlx * sin + nly * cos
+  const pos = { x: circle.pos.x + nx * overlap, y: circle.pos.y + ny * overlap }
+
+  // Velocity impulse only when closing along the normal (the box is immovable, so invSum is the circle's).
+  const vn = circle.vel.x * nx + circle.vel.y * ny
+  if (vn >= 0) return { pos, vel: circle.vel }
+  const j = -(1 + restitution) * vn
+  return { pos, vel: { x: circle.vel.x + j * nx, y: circle.vel.y + j * ny } }
 }
