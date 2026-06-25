@@ -1,4 +1,4 @@
-import type { Vec2 } from './geom'
+import { normalizeVec2, type Vec2 } from './geom'
 import type { Wall, WallArc } from './map'
 
 /**
@@ -91,11 +91,8 @@ function segContact(ax: number, ay: number, bx: number, by: number, px: number, 
 
 /** Signed-distance contact against the arc's circle: radial offset from the rim, gradient pointing outward. */
 function radialContact(cx: number, cy: number, radius: number, px: number, py: number): WallContact {
-  const dx = px - cx
-  const dy = py - cy
-  const dc = Math.hypot(dx, dy)
-  if (dc < 1e-9) return { sd: -radius, nx: 1, ny: 0, body: true }
-  return { sd: dc - radius, nx: dx / dc, ny: dy / dc, body: true }
+  const { d, nx, ny } = normalizeVec2(px - cx, py - cy, 1, 0)
+  return { sd: d - radius, nx, ny, body: true }
 }
 
 /** Contact against an arc: the circle rim within its span, or an endpoint cap past either angular end. */
@@ -109,9 +106,8 @@ function arcContact(w: WallArc, px: number, py: number): WallContact {
 
 /** A one-sided distance cap around an endpoint: always-positive distance, normal radially out from it. */
 function capContact(dx: number, dy: number): WallContact {
-  const d = Math.hypot(dx, dy)
-  if (d < 1e-9) return { sd: 0, nx: 0, ny: 0, body: false }
-  return { sd: d, nx: dx / d, ny: dy / d, body: false }
+  const { d, nx, ny } = normalizeVec2(dx, dy)
+  return { sd: d, nx, ny, body: false }
 }
 
 /** Signed-distance contact of (px, py) against any wall. */

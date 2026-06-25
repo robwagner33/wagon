@@ -16,3 +16,20 @@ export function clamp(value: number, min: number, max: number): number {
 export function smoothstep(t: number): number {
   return t * t * (3 - 2 * t)
 }
+
+/**
+ * Unit vector along (dx, dy) plus its magnitude `d`. When the vector is shorter than `eps` it has no
+ * meaningful direction, so the normal falls back to (fbx, fby) — keeping callers deterministic on exact
+ * overlap.
+ */
+export function normalizeVec2(
+  dx: number,
+  dy: number,
+  fbx = 0,
+  fby = 0,
+  eps = 1e-9,
+): { d: number; nx: number; ny: number } {
+  const d = Math.hypot(dx, dy)
+  if (d < eps) return { d, nx: fbx, ny: fby }
+  return { d, nx: dx / d, ny: dy / d }
+}

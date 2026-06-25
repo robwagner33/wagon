@@ -1,4 +1,4 @@
-import { clamp, type Vec2 } from './geom'
+import { clamp, normalizeVec2, type Vec2 } from './geom'
 
 /**
  * Body↔body collision: the moving counterpart to `resolveWalls`/`resolveBounce` (which collide a body
@@ -40,13 +40,10 @@ export function resolveCircles(
 
   const dx = b.pos.x - a.pos.x
   const dy = b.pos.y - a.pos.y
-  const dist = Math.hypot(dx, dy)
+  // Contact normal a→b. Exact-overlap (dist 0) falls back to +x so the push stays deterministic.
+  const { d: dist, nx, ny } = normalizeVec2(dx, dy, 1, 0)
   const minDist = a.r + b.r
   if (dist >= minDist) return unchanged // not overlapping
-
-  // Contact normal a→b. Exact-overlap (dist 0) falls back to +x so the push stays deterministic.
-  const nx = dist > 1e-9 ? dx / dist : 1
-  const ny = dist > 1e-9 ? dy / dist : 0
 
   // Positional separation: push the pair to just-touching, split by inverse mass (heavy moves least).
   const overlap = minDist - dist
@@ -151,28 +148,9 @@ export function resolveCircleRect(circle: CircleBody, rect: RectBody, restitutio
   const offy = ly - cly
   const dist = Math.hypot(offx, offy)
 
-  let nlx: number
-  let nly: number
-  let overlap: number
-  if (dist > 1e-9) {
-    if (dist >= circle.r) return unchanged // closest surface point is outside the circle: no contact
-    nlx = offx / dist
-    nly = offy / dist
-    overlap = circle.r - dist
-  } else {
-    // Center is inside the box: eject through whichever face it's nearest, breaking ties toward x.
-    const penX = rect.half.x - Math.abs(lx)
-    const penY = rect.half.y - Math.abs(ly)
-    if (penX <= penY) {
-      nlx = lx < 0 ? -1 : 1
-      nly = 0
-      overlap = penX + circle.r
-    } else {
-      nlx = 0
-      nly = ly < 0 ? -1 : 1
-      overlap = penY + circle.r
-    }
-  }
+  const contact = circleRectContact(lx, ly, offx, offy, dist, rect.half, circle.r)
+  if (!contact) return unchanged // no overlap
+  const { nlx, nly, overlap } = contact
 
   // Rotate the local contact normal back into world space.
   const nx = nlx * cos - nly * sin
@@ -184,4 +162,29 @@ export function resolveCircleRect(circle: CircleBody, rect: RectBody, restitutio
   if (vn >= 0) return { pos, vel: circle.vel }
   const j = -(1 + restitution) * vn
   return { pos, vel: { x: circle.vel.x + j * nx, y: circle.vel.y + j * ny } }
+}
+
+/**
+ * Local-frame contact for a circle against the axis-aligned box: the outward normal and separation depth,
+ * or null when the closest surface point lies outside the circle (no overlap). `offx/offy` is the circle
+ * center minus its point clamped to the box; `dist` their magnitude. A center driven inside the box
+ * (dist ≈ 0) is ejected through whichever face it's nearest, breaking ties toward x.
+ */
+function circleRectContact(
+  lx: number,
+  ly: number,
+  offx: number,
+  offy: number,
+  dist: number,
+  half: Vec2,
+  r: number,
+): { nlx: number; nly: number; overlap: number } | null {
+  if (dist > 1e-9) {
+    if (dist >= r) return null // closest surface point is outside the circle: no contact
+    return { nlx: offx / dist, nly: offy / dist, overlap: r - dist }
+  }
+  const penX = half.x - Math.abs(lx)
+  const penY = half.y - Math.abs(ly)
+  if (penX <= penY) return { nlx: lx < 0 ? -1 : 1, nly: 0, overlap: penX + r }
+  return { nlx: 0, nly: ly < 0 ? -1 : 1, overlap: penY + r }
 }
