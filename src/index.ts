@@ -1,3 +1,4 @@
+export * from './context'
 export * from './geom'
 export * from './tick'
 export * from './atlas'
