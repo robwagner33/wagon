@@ -22,6 +22,12 @@ export interface RemoteSet<TMeta> {
   /** Interpolated position at server time `t`, or null if `id` has no samples. */
   sampleAt(id: string, t: number): { pos: Vec2; moving: boolean } | null
   /**
+   * Dead-reckoned position at server time `t` (project the newest sample forward by its velocity, capped at
+   * `maxAheadMs`) — for straight-line bodies rendered at ~live time without the playout sit. Null if `id` has no
+   * samples. The recorded {@link Sample}'s `vx/vy` drives it; absent, it falls back to a last-two-sample slope.
+   */
+  extrapolatedAt(id: string, t: number, tickMs: number, maxAheadMs: number): { pos: Vec2 } | null
+  /**
    * Each entity at its freshest authoritative position as an immovable collision blocker (radius `r`,
    * `invMass` 0) — what a predicting local player hard-stops against. The server resolves the real shove,
    * so the client only blocks itself. See {@link RemoteBuffer.latest}.
@@ -76,6 +82,7 @@ export function createRemoteSet<TMeta>(): RemoteSet<TMeta> {
     ids: buffer.ids,
     meta: (id) => metas.get(id) ?? null,
     sampleAt: buffer.sampleAt,
+    extrapolatedAt: buffer.extrapolatedAt,
     blockers,
     velocityAt,
   }

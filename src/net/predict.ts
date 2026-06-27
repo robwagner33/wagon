@@ -1,5 +1,5 @@
 import type { Vec2 } from '../geom'
-import { REMOTE_BUFFER_MAX, sampleAt, type Sample } from './interpolate'
+import { extrapolatedAt, REMOTE_BUFFER_MAX, sampleAt, type Sample } from './interpolate'
 import { createErrorSmoother } from './smooth'
 
 /**
@@ -124,6 +124,11 @@ export interface RemoteBuffer {
   /** Interpolated position at server time `t` (Catmull-Rom), or null if `id` has no samples. */
   sampleAt(id: string, t: number): { pos: Vec2; moving: boolean } | null
   /**
+   * Dead-reckoned position at server time `t`, projecting the newest sample forward along its velocity (capped at
+   * `maxAheadMs`). For deterministic straight-line bodies (projectiles) rendered at ~live time, no playout sit.
+   */
+  extrapolatedAt(id: string, t: number, tickMs: number, maxAheadMs: number): { pos: Vec2 } | null
+  /**
    * Newest buffered position for `id`, or null if it has none. This is the freshest authoritative spot —
    * use it for collision prediction (the server resolves against live positions), not for rendering, which
    * wants {@link sampleAt} on the delayed playout timeline to stay smooth.
@@ -159,6 +164,7 @@ export function createRemoteBuffer(max: number = REMOTE_BUFFER_MAX): RemoteBuffe
   return {
     push,
     sampleAt: (id, t) => sampleAt(buffers.get(id) ?? [], t),
+    extrapolatedAt: (id, t, tickMs, maxAheadMs) => extrapolatedAt(buffers.get(id) ?? [], t, tickMs, maxAheadMs),
     latest,
     ids: () => [...buffers.keys()],
     remove: (id) => {

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { lerp, sampleAt, type Sample } from '../interpolate'
+import { extrapolatedAt, lerp, sampleAt, type Sample } from '../interpolate'
 
 /** Evenly-spaced samples along the x axis (a straight constant-speed path). */
 const buf: Sample[] = [
@@ -48,5 +48,33 @@ describe('sampleAt', () => {
       { t: 20, x: 5, y: 5 },
     ]
     expect(sampleAt(still, 5)!.moving).toBe(false)
+  })
+})
+
+describe('extrapolatedAt', () => {
+  it('returns null for an empty buffer', () => {
+    expect(extrapolatedAt([], 5, 10, 20)).toBeNull()
+  })
+
+  it('projects past the newest sample by its authoritative velocity (tiles/tick)', () => {
+    // newest at t=30,x=30 with vx=1 tile/tick; tickMs=10, so 15ms ahead = 1.5 ticks = +1.5 tiles.
+    const vbuf: Sample[] = [{ t: 30, x: 30, y: 0, vx: 1, vy: 0 }]
+    expect(extrapolatedAt(vbuf, 45, 10, 100)!.pos.x).toBeCloseTo(31.5)
+  })
+
+  it('caps the lead at maxAheadMs so a stalled buffer cannot run away', () => {
+    const vbuf: Sample[] = [{ t: 30, x: 30, y: 0, vx: 1, vy: 0 }]
+    // 500ms ahead, but capped to 20ms = 2 ticks = +2 tiles.
+    expect(extrapolatedAt(vbuf, 530, 10, 20)!.pos.x).toBeCloseTo(32)
+  })
+
+  it('never extrapolates backward when t is behind the newest sample', () => {
+    const vbuf: Sample[] = [{ t: 30, x: 30, y: 0, vx: 1, vy: 0 }]
+    expect(extrapolatedAt(vbuf, 10, 10, 100)!.pos.x).toBeCloseTo(30)
+  })
+
+  it('falls back to the last-two-sample slope when no vx/vy is recorded', () => {
+    // buf moves 10 tiles per 10ms; tickMs=10 → 10 tiles/tick; 15ms past newest (t=30) = 1.5 ticks = +15.
+    expect(extrapolatedAt(buf, 45, 10, 100)!.pos.x).toBeCloseTo(45)
   })
 })

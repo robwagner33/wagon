@@ -10,6 +10,12 @@ export interface Sample {
   t: number
   x: number
   y: number
+  /**
+   * Authoritative per-tick velocity at this sample (tiles/tick), for {@link extrapolatedAt} to project past the
+   * newest sample. Optional — interpolated entities (players) omit it and extrapolation falls back to a derivative.
+   */
+  vx?: number
+  vy?: number
 }
 
 /** Cap on buffered position samples per remote entity (~2s at 30 Hz). Bounds memory; far exceeds the interp delay's reach. */
@@ -57,6 +63,35 @@ export function sampleAt(buffer: Sample[], t: number): { pos: Vec2; moving: bool
   }
 
   return { pos: { x: newest.x, y: newest.y }, moving: false }
+}
+
+/**
+ * Dead-reckon a position from a time-ordered buffer at server time `t` by projecting the newest sample forward
+ * along its velocity. Unlike {@link sampleAt} (which lags behind real time on the playout timeline and freezes
+ * a just-spawned entity at its first sample), this draws a deterministic straight-line body — a projectile — at
+ * ~live time with no spawn sit. Velocity is the newest sample's authoritative `vx/vy` (tiles/tick), or a
+ * last-two-sample derivative when absent. `ahead` is clamped to `[0, maxAheadMs]` so a stalled or despawning
+ * buffer can't run the body away; `tickMs` converts the ms lead into ticks of velocity. Null on an empty buffer.
+ */
+export function extrapolatedAt(buffer: Sample[], t: number, tickMs: number, maxAheadMs: number): { pos: Vec2 } | null {
+  if (buffer.length === 0) return null
+  const newest = buffer[buffer.length - 1]
+  const ahead = Math.max(0, Math.min(maxAheadMs, t - newest.t))
+  const vel = sampleVelocity(buffer, tickMs)
+  const ticks = ahead / tickMs
+  return { pos: { x: newest.x + vel.x * ticks, y: newest.y + vel.y * ticks } }
+}
+
+/** The newest sample's per-tick velocity (tiles/tick): its authoritative `vx/vy`, else the last-two-sample slope, else zero. */
+function sampleVelocity(buffer: Sample[], tickMs: number): Vec2 {
+  const newest = buffer[buffer.length - 1]
+  if (newest.vx !== undefined && newest.vy !== undefined) return { x: newest.vx, y: newest.vy }
+  if (buffer.length < 2) return { x: 0, y: 0 }
+  const prev = buffer[buffer.length - 2]
+  const dt = newest.t - prev.t
+  if (dt <= 0) return { x: 0, y: 0 }
+  const perTick = tickMs / dt
+  return { x: (newest.x - prev.x) * perTick, y: (newest.y - prev.y) * perTick }
 }
 
 /**
