@@ -1,8 +1,6 @@
 # wagon
 
-The shared game engine. Games (hockey, Dungo) are thin layers on top: each brings its own world/sim and
-art, and reuses wagon's deterministic primitives, networking pipe, and dev tooling. wagon ships TypeScript
-source directly (no build step) via three subpath exports — keep each one's concern separate.
+Simple game engine for my web based games
 
 ## Subpaths
 
