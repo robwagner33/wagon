@@ -11,8 +11,9 @@ function mockTransport() {
   let input!: (id: string, i: number) => void
   let message!: (id: string, m: string) => void
   const broadcast = vi.fn()
+  const emit = vi.fn()
 
-  const transport: HostTransport<number, string, Snap> = {
+  const transport: HostTransport<number, string, Snap, string> = {
     onPeerJoin: (cb) => {
       join = cb
     },
@@ -26,6 +27,7 @@ function mockTransport() {
       message = cb
     },
     broadcast,
+    emit,
   }
 
   const fireAll = () => {
@@ -34,11 +36,11 @@ function mockTransport() {
     input('p', 1)
     message('p', 'reset')
   }
-  return { transport, broadcast, fireAll }
+  return { transport, broadcast, emit, fireAll }
 }
 
 /** Handlers that record the order they're invoked in. */
-function recordingHandlers(): HostHandlers<number, string, Snap> & { calls: string[] } {
+function recordingHandlers(): HostHandlers<number, string, Snap, string> & { calls: string[] } {
   const calls: string[] = []
   return {
     calls,
@@ -71,5 +73,20 @@ describe('hostStep', () => {
     hostStep(transport, h, 7)
     expect(h.calls).toEqual(['tick', 'snapshot']) // tick must run before the snapshot is built
     expect(broadcast).toHaveBeenCalledWith({ tick: 7 })
+  })
+
+  it('emits each drained one-shot event after the snapshot', () => {
+    const { transport, emit } = mockTransport()
+    const h = recordingHandlers()
+    h.drainEvents = () => ['goal', 'results']
+    hostStep(transport, h, 7)
+    expect(emit).toHaveBeenNthCalledWith(1, 'goal')
+    expect(emit).toHaveBeenNthCalledWith(2, 'results')
+  })
+
+  it('emits nothing when the game supplies no drainEvents', () => {
+    const { transport, emit } = mockTransport()
+    hostStep(transport, recordingHandlers(), 7)
+    expect(emit).not.toHaveBeenCalled()
   })
 })

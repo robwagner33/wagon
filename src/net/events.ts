@@ -6,4 +6,6 @@ export const Events = {
   Input: 'input',
   /** Client → host: a typed, non-input action (commands, gameplay actions). See the game's `TMsg`. */
   Message: 'message',
+  /** Host → clients: a typed one-shot event outside the state stream (results, kill feed). See the game's `TEvent`. */
+  Event: 'event',
 } as const

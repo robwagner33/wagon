@@ -20,10 +20,10 @@ import type { Member, Room, RoomRegistry } from './rooms'
  * INVARIANT: every handler runs synchronously inside its `activate`d window. The active world must not be
  * `await`ed across — see {@link createContext}'s note.
  */
-export function runRoomHost<TInput, TMsg, TSnapshot, TRoom extends Room<unknown, Member>>(
+export function runRoomHost<TInput, TMsg, TSnapshot, TEvent, TRoom extends Room<unknown, Member>>(
   io: Server,
   registry: RoomRegistry<TRoom>,
-  handlers: HostHandlers<TInput, TMsg, TSnapshot>,
+  handlers: HostHandlers<TInput, TMsg, TSnapshot, TEvent>,
   opts: {
     activate: (room: TRoom) => void
     tickMs: number
@@ -63,12 +63,14 @@ export function runRoomHost<TInput, TMsg, TSnapshot, TRoom extends Room<unknown,
   })
 
   // One fixed-tick clock drives every playing room: activate it, advance it, broadcast its snapshot to its
-  // own sockets only (io.to(code)). Lobby rooms don't tick. Each room carries its own tick counter.
+  // own sockets only (io.to(code)), then emit any one-shot events the tick queued. Lobby rooms don't tick.
+  // Each room carries its own tick counter.
   setInterval(() => {
     for (const room of registry.playing()) {
       activate(room)
       handlers.tick(room.tick)
       io.to(room.code).emit(Events.StateUpdate, handlers.snapshot(room.tick))
+      for (const ev of handlers.drainEvents?.() ?? []) io.to(room.code).emit(Events.Event, ev)
       room.tick++
     }
   }, tickMs)

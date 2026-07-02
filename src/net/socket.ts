@@ -3,7 +3,7 @@ import { Events } from './events'
 import { makeHostCallbacks, type HostTransport } from './transport'
 
 /** socket.io implementation of the HostTransport: one socket = one peer, the player id is the socket id. */
-export function createSocketHost<I, M, S>(io: Server): HostTransport<I, M, S> {
+export function createSocketHost<I, M, S, E = never>(io: Server): HostTransport<I, M, S, E> {
   const { cb, register } = makeHostCallbacks<I, M>()
 
   io.on('connection', (socket) => {
@@ -16,5 +16,6 @@ export function createSocketHost<I, M, S>(io: Server): HostTransport<I, M, S> {
   return {
     ...register,
     broadcast: (snap) => io.emit(Events.StateUpdate, snap),
+    emit: (ev) => io.emit(Events.Event, ev),
   }
 }
