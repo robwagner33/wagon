@@ -1,6 +1,5 @@
 import { describe, expect, it, vi } from 'vitest'
-import { bindHost, hostStep } from '../host'
-import type { HostHandlers, HostTransport } from '../transport'
+import { bindHost, hostStep, type HostHandlers, type HostTransport } from '../transport'
 
 type Snap = { tick: number }
 

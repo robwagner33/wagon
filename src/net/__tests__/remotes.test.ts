@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { createRemoteSet } from '../remotes'
+import { createRemoteSet } from '../client'
 
 interface Meta {
   name: string

@@ -1,5 +1,5 @@
-import type { Vec2 } from '../core'
-import type { CircleBody } from '../sim'
+import type { Vec2 } from '../../core'
+import type { CircleBody } from '../../sim'
 import { createRemoteBuffer } from './predict'
 import type { Sample } from './interpolate'
 

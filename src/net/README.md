@@ -11,20 +11,17 @@ types so the pipe never knows the game:
 
 ## Rules
 
-- **Depends only on `wagon/core`** (and DOM/Node globals for timers). No game-specific types — a game
-  injects them via `HostHandlers` and the type parameters.
-- **Only dep-free pipe code lives here.** The concrete socket.io adapters (`createSocketHost`,
-  `createSocketClient`) live in the *game* packages, where `socket.io`/`socket.io-client` are deps; they
-  implement the interfaces below.
-- A game wires the pipe to its world through `HostHandlers` and routes `TMsg` to its own dispatch (e.g. a
-  `createCommandRegistry`).
+- **No game-specific types.** A game injects them via `HostHandlers` and the type parameters, and routes
+  `TMsg` to its own dispatch (e.g. a `createCommandRegistry`).
+- Depends on `wagon/core` (and `wagon/sim` for the remote body type), plus `socket.io` for the socket
+  adapter and DOM/Node globals for timers.
 
-## Files
+## Layout
 
-- `transport.ts` — the generic seam: `HostTransport`, `NetClient`, `HostHandlers`.
-- `host.ts` — `bindHost` (wire transport → handlers) and `hostStep` (tick + broadcast); clock-agnostic.
-- `loopback.ts` — `createLoopbackHost`: in-process listen-server transport for solo/couch play, no sockets.
-- `clock.ts` — local↔server clock offset + adaptive jitter/playout delay (client-side sync).
-- `interpolate.ts` — Catmull-Rom sampling of snapshot buffers into smooth remote motion.
+Split into three subdir modules (each with its own README) plus `commands`; all re-exported from `index.ts`,
+so consumers still import the single `wagon/net` barrel.
+
+- `transport/` — the host↔client seam, host loop, and socket + in-process adapters.
+- `client/` — client-side prediction, interpolation, smoothing, clock sync.
+- `rooms/` — multi-room registry + the driver that steps many rooms over one transport.
 - `commands.ts` — `createCommandRegistry`: host-side name→handler map (mirror of the dev console's registry).
-- `events.ts` — transport event names shared by host and client.

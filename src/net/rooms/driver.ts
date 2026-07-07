@@ -1,7 +1,6 @@
 import type { Server } from 'socket.io'
-import { Events } from './events'
-import type { HostHandlers } from './transport'
-import type { Member, Room, RoomRegistry } from './rooms'
+import { Events, type HostHandlers } from '../transport'
+import type { Member, Room, RoomRegistry } from './registry'
 
 /**
  * The room-aware analogue of {@link createSocketHost} + {@link hostStep}: one socket.io server driving *many*

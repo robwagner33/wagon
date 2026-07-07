@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { createErrorSmoother } from '../smooth'
+import { createErrorSmoother } from '../client'
 
 describe('createErrorSmoother', () => {
   it('returns the absorbed correction, then decays it toward zero over time', () => {

@@ -1,4 +1,4 @@
-import type { Vec2 } from '../core'
+import type { Vec2 } from '../../core'
 import { extrapolatedAt, REMOTE_BUFFER_MAX, sampleAt, type Sample } from './interpolate'
 import { createErrorSmoother } from './smooth'
 

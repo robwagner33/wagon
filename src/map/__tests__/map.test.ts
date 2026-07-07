@@ -9,7 +9,7 @@ import {
   type Layer,
   type MapDoc,
   type MapObject,
-} from '../map'
+} from '../../map'
 
 const obj = (id: string, def: string, x = 0, y = 0): MapObject => ({ id, def, x, y })
 

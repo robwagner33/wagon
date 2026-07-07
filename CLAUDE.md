@@ -4,7 +4,27 @@ This document contains information about how to work within this codebase. Follo
 
 # Project Overview
 
-Wagon is the shared map/tilemap core consumed by the games (dungo, hockey) and by the wainwright editor. It exports the `MapDoc` types and map logic via `./core` (`src/index.ts`) with no runtime deps. Keep it framework-light and self-contained — it is the reuse boundary that several projects build on, so changes here ripple outward; favor stable, minimal APIs.
+Wagon is the shared game engine consumed by games (currently hockey) and the wainwright map editor. It provides the map/tilemap schema, deterministic simulation primitives (motion, collision, swept-motion, impulse/reach), and the authoritative-host networking pipe. Shipped as raw `.ts` with no runtime deps. Keep it framework-light and self-contained — it is the reuse boundary games build on, so changes here ripple outward; favor stable, minimal APIs.
+
+**Game-agnostic is the prime directive.** Wagon commits to no single game, genre, or movement model. No game concept (players, teams, a puck, a specific weapon) belongs here — games inject their specifics via type parameters and callbacks. When documenting a primitive, describe it in general terms; put the model it happens to implement on the specific function, not the module (e.g. `stepMotion` is *one* inertial integrator, not "the way movement works").
+
+# Module Structure
+
+`src/` is split into subpath-exported modules, each a top-level dir with an `index.ts` barrel that is its **only** public surface:
+
+- **`core`** — dependency-free primitives: `geom` (Vec2, clamp, …), `context` (ambient per-tick world pointer), `tick` (tick-rate constants).
+- **`map`** — map/tilemap schema + tile data: `map` (MapDoc, collision, walls schema), `objects`, `atlas`.
+- **`sim`** — tick-time physics/movement: `bodies`, `walls` (collision resolvers), `march` (swept-motion iterator), `motion` (integrator), `prop` (free body), `strike` (impulse/reach channel).
+- **`net`** — the authoritative-host pipe (see `net/README.md`), itself split into `transport`, `client`, `rooms`.
+- **`render`** — canvas/browser drawing (the only DOM-coupled module).
+- **`console`** — debug overlay.
+
+**Every dir under `src/` has a `README.md`** stating its purpose and what kind of code belongs there. When you add a module dir, add its README.
+
+## Import rules
+
+- **Import one layer deep only.** Consumers and cross-module code import the module barrel — `wagon/core`, never `wagon/core/geom` or a nested path. Internally, cross-module imports go through the sibling barrel (`import … from '../core'`); same-module imports use direct relative files (`./geom`). A module's `index.ts` is the contract; its internal file layout is free to change.
+- **No path aliases in source.** Wagon ships raw `.ts`, so a consumer compiling it resolves any alias (`@/…`) against *their* config, not ours — an alias in source silently breaks consumption. Use relative imports everywhere in source. (Tests are never shipped, but we keep them relative too for consistency.)
 
 # Development Philosophy
 

@@ -1,6 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { createPredictor, createRemoteBuffer, createSelfPredictor } from '../predict'
-import { REMOTE_BUFFER_MAX, type Sample } from '../interpolate'
+import { createPredictor, createRemoteBuffer, createSelfPredictor, REMOTE_BUFFER_MAX, type Sample } from '../client'
 import type { Vec2 } from '../../core'
 
 /** A trivial deterministic step over a numeric state: add the input's delta. Stands in for game physics. */

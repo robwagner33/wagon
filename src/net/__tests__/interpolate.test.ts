@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { extrapolatedAt, lerp, sampleAt, type Sample } from '../interpolate'
+import { extrapolatedAt, lerp, sampleAt, type Sample } from '../client'
 
 /** Evenly-spaced samples along the x axis (a straight constant-speed path). */
 const buf: Sample[] = [

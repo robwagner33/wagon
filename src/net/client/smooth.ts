@@ -1,4 +1,4 @@
-import type { Vec2 } from '../core'
+import type { Vec2 } from '../../core'
 
 /**
  * Prediction-error smoothing for client-side reconciliation. An authoritative correction snaps the

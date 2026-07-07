@@ -1,6 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { createLoopbackHost } from '../loopback'
-import type { HostHandlers } from '../transport'
+import { createLoopbackHost, type HostHandlers } from '../transport'
 
 /** A trivial stand-in world: records what the host loop pushes at it, builds a numbered snapshot. */
 function fakeWorld() {

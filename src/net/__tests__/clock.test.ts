@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { createClock } from '../clock'
+import { createClock } from '../client'
 import { TICK_MS } from '../../core'
 
 describe('createClock', () => {

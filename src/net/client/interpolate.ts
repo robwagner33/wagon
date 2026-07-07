@@ -1,4 +1,4 @@
-import type { Vec2 } from '../core'
+import type { Vec2 } from '../../core'
 
 /**
  * Interpolation turns the server's discrete position snapshots into a continuous path: given the

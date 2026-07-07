@@ -1,8 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import type { Server } from 'socket.io'
-import { Events } from '../events'
-import { createRoomRegistry, type Member, type Room } from '../rooms'
-import { runRoomHost } from '../room-host'
+import { Events } from '../transport'
+import { createRoomRegistry, runRoomHost, type Member, type Room } from '../rooms'
 
 type World = { label: string }
 type TestRoom = Room<World, Member>
