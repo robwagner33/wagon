@@ -1,4 +1,4 @@
-import type { Vec2 } from '../index'
+import type { Vec2 } from '../core'
 
 /**
  * Viewport: maps tile-space ↔ screen, scaling the active map to fit the window (letterboxed) so it

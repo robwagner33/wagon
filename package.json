@@ -4,7 +4,9 @@
   "version": "0.0.0",
   "type": "module",
   "exports": {
-    "./core": "./src/index.ts",
+    "./core": "./src/core/index.ts",
+    "./map": "./src/map/index.ts",
+    "./sim": "./src/sim/index.ts",
     "./render": "./src/render/index.ts",
     "./net": "./src/net/index.ts",
     "./console": "./src/console/index.ts"

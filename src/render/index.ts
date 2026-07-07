@@ -1,6 +1,6 @@
 // Canvas rendering helpers — the only browser-coupled part of wagon. Kept out of `wagon/core` (which stays
 // canvas-free and node-portable) and imported explicitly via `wagon/render` by consumers that draw.
-import { atlasRect } from '../atlas'
+import { atlasRect } from '../map'
 
 export * from './view'
 export * from './sprite'

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { clamp, smoothstep } from '../geom'
+import { clamp, directionVector, smoothstep } from '../geom'
 
 describe('clamp', () => {
   it('returns the value when it is inside the range', () => {
@@ -35,5 +35,19 @@ describe('smoothstep', () => {
     // Below 0.5 the curve sits under the linear ramp (ease-in), above it sits over (ease-out).
     expect(smoothstep(0.25)).toBeLessThan(0.25)
     expect(smoothstep(0.75)).toBeGreaterThan(0.75)
+  })
+})
+
+describe('directionVector', () => {
+  it('points along the cardinal angles', () => {
+    expect(directionVector(0)).toEqual({ x: 1, y: 0 })
+    const right = directionVector(Math.PI / 2)
+    expect(right.x).toBeCloseTo(0)
+    expect(right.y).toBeCloseTo(1)
+  })
+
+  it('returns a unit vector at an arbitrary angle', () => {
+    const v = directionVector(0.7)
+    expect(Math.hypot(v.x, v.y)).toBeCloseTo(1)
   })
 })

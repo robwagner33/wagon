@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { drawAtlasCell } from '../render'
+import { drawAtlasCell } from '../index'
 
 /** A canvas context stub that records every drawing call as [method, ...args] for assertion. */
 function recordingCtx() {

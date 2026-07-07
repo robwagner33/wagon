@@ -17,6 +17,11 @@ export function smoothstep(t: number): number {
   return t * t * (3 - 2 * t)
 }
 
+/** The unit vector pointing along `angle` (radians) — `{cos, sin}`. The basis for aim/heading → motion. */
+export function directionVector(angle: number): Vec2 {
+  return { x: Math.cos(angle), y: Math.sin(angle) }
+}
+
 /**
  * Unit vector along (dx, dy) plus its magnitude `d`. When the vector is shorter than `eps` it has no
  * meaningful direction, so the normal falls back to (fbx, fby) — keeping callers deterministic on exact

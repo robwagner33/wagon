@@ -1,5 +1,5 @@
-import { normalizeVec2, type Vec2 } from './geom'
-import type { Wall, WallArc } from './map'
+import { normalizeVec2, type Vec2 } from '../core'
+import type { Wall, WallArc } from '../map'
 
 /**
  * Pure wall geometry shared by the sim (collision resolve), the editor (erase hit-test + arc authoring), and

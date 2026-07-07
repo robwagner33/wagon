@@ -1,5 +1,5 @@
-import { clamp } from '../geom'
-import { TICK_MS } from '../tick'
+import { clamp } from '../core'
+import { TICK_MS } from '../core'
 
 /** Per-snapshot easing of the local→server clock offset; small enough to absorb arrival jitter. */
 const CLOCK_SMOOTHING = 0.05

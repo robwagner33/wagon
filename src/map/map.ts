@@ -1,4 +1,4 @@
-import type { Vec2 } from './geom'
+import type { Vec2 } from '../core'
 
 /**
  * Authored-map schema + a generic, game-agnostic query API.

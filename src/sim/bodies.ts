@@ -1,4 +1,4 @@
-import { clamp, normalizeVec2, type Vec2 } from './geom'
+import { clamp, normalizeVec2, type Vec2 } from '../core'
 
 /**
  * Body↔body collision: the moving counterpart to `resolveWalls`/`resolveBounce` (which collide a body

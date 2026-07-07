@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { createClock } from '../clock'
-import { TICK_MS } from '../../tick'
+import { TICK_MS } from '../../core'
 
 describe('createClock', () => {
   it('snaps the offset hard on the first snapshot', () => {
