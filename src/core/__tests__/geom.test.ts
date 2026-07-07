@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { clamp, directionVector, smoothstep } from '../geom'
+import { clamp, directionVector, fromLocal, normalizeVec2, smoothstep, toLocal } from '../geom'
 
 describe('clamp', () => {
   it('returns the value when it is inside the range', () => {
@@ -49,5 +49,46 @@ describe('directionVector', () => {
   it('returns a unit vector at an arbitrary angle', () => {
     const v = directionVector(0.7)
     expect(Math.hypot(v.x, v.y)).toBeCloseTo(1)
+  })
+})
+
+describe('normalizeVec2', () => {
+  it('returns the unit vector and magnitude for a real vector', () => {
+    const { d, nx, ny } = normalizeVec2(3, 4)
+    expect(d).toBeCloseTo(5)
+    expect(nx).toBeCloseTo(0.6)
+    expect(ny).toBeCloseTo(0.8)
+    expect(Math.hypot(nx, ny)).toBeCloseTo(1)
+  })
+
+  it('falls back to the given normal on a zero-length vector (deterministic tie-break)', () => {
+    const { d, nx, ny } = normalizeVec2(0, 0, 1, 0)
+    expect(d).toBe(0)
+    expect(nx).toBe(1)
+    expect(ny).toBe(0)
+  })
+
+  it('treats a vector shorter than eps as zero-length', () => {
+    const { nx, ny } = normalizeVec2(1e-6, 0, 0, 1, 1e-3)
+    expect(nx).toBe(0)
+    expect(ny).toBe(1)
+  })
+})
+
+describe('toLocal / fromLocal', () => {
+  it('projects a delta onto a basis: along + perpendicular', () => {
+    // Basis pointing +y (cos 0, sin 1): a +x delta is 0 along, -1 to the (left) perpendicular.
+    expect(toLocal(1, 0, 0, 1)).toEqual({ x: 0, y: -1 })
+    // A delta along the basis reads as pure `x`.
+    expect(toLocal(0, 2, 0, 1)).toEqual({ x: 2, y: 0 })
+  })
+
+  it('round-trips through fromLocal for an arbitrary basis', () => {
+    const cos = Math.cos(0.6)
+    const sin = Math.sin(0.6)
+    const local = toLocal(1.3, -0.7, cos, sin)
+    const world = fromLocal(local.x, local.y, cos, sin)
+    expect(world.x).toBeCloseTo(1.3)
+    expect(world.y).toBeCloseTo(-0.7)
   })
 })

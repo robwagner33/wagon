@@ -1,4 +1,5 @@
 export * from './interpolate'
+export * from './buffer'
 export * from './predict'
 export * from './remotes'
 export * from './smooth'

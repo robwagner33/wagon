@@ -1,4 +1,4 @@
-import { normalizeVec2, type Vec2 } from '../core'
+import { normalImpulse, normalizeVec2, type Vec2 } from '../core'
 import type { Wall, WallArc } from '../map'
 
 /**
@@ -50,10 +50,10 @@ function closestOnArc(w: WallArc, px: number, py: number): Vec2 {
   return pointOnArc(w, nearestArcAngle(w, Math.atan2(py - w.cy, px - w.cx)))
 }
 
-/** Closest point on a wall primitive to (px, py): segment projection or arc radial projection, clamped. */
-export function closestOnWall(w: Wall, px: number, py: number): Vec2 {
-  if (w.kind === 'seg') return closestOnSeg(w.ax, w.ay, w.bx, w.by, px, py)
-  return closestOnArc(w, px, py)
+/** Closest point on a wall primitive to `p`: segment projection or arc radial projection, clamped. */
+export function closestOnWall(w: Wall, p: Vec2): Vec2 {
+  if (w.kind === 'seg') return closestOnSeg(w.ax, w.ay, w.bx, w.by, p.x, p.y)
+  return closestOnArc(w, p.x, p.y)
 }
 
 /**
@@ -110,16 +110,16 @@ function capContact(dx: number, dy: number): WallContact {
   return { sd: d, nx, ny, body: false }
 }
 
-/** Signed-distance contact of (px, py) against any wall. */
-export function wallContact(w: Wall, px: number, py: number): WallContact {
-  if (w.kind === 'seg') return segContact(w.ax, w.ay, w.bx, w.by, px, py)
-  return arcContact(w, px, py)
+/** Signed-distance contact of point `p` against any wall. */
+export function wallContact(w: Wall, p: Vec2): WallContact {
+  if (w.kind === 'seg') return segContact(w.ax, w.ay, w.bx, w.by, p.x, p.y)
+  return arcContact(w, p.x, p.y)
 }
 
-/** Distance from a point to a wall. */
-export function distToWall(w: Wall, px: number, py: number): number {
-  const q = closestOnWall(w, px, py)
-  return Math.hypot(px - q.x, py - q.y)
+/** Distance from point `p` to a wall. */
+export function distToWall(w: Wall, p: Vec2): number {
+  const q = closestOnWall(w, p)
+  return Math.hypot(p.x - q.x, p.y - q.y)
 }
 
 /**
@@ -128,7 +128,7 @@ export function distToWall(w: Wall, px: number, py: number): number {
  * +1 when even that is 0 — so the resolver always has a definite side to clamp to.
  */
 function startedSide(w: Wall, from: Vec2, fallbackSd: number): number {
-  const c = wallContact(w, from.x, from.y)
+  const c = wallContact(w, from)
   return Math.sign(c.body ? c.sd || fallbackSd : fallbackSd) || 1
 }
 
@@ -154,7 +154,7 @@ function clearOfCap(p: Vec2, c: WallContact, r: number): Vec2 {
 
 /** Keep `p` clear of one wall — sliding along its body, or pushing out of an endpoint cap. */
 function clearOfWall(w: Wall, from: Vec2, p: Vec2, r: number): Vec2 {
-  const c = wallContact(w, p.x, p.y)
+  const c = wallContact(w, p)
   return c.body ? clearOfBody(w, from, p, c, r) : clearOfCap(p, c, r)
 }
 
@@ -175,7 +175,7 @@ export function resolveWalls(walls: Wall[], from: Vec2, to: Vec2, r: number): Ve
 
 /**
  * Resolve a circle of radius `r` that moved `from`→`to` against `walls`, returning the cleared position
- * **and a bounced velocity** — for a projectile (e.g. a puck) rather than a steerable unit.
+ * **and a bounced velocity** — for a projectile rather than a steerable unit.
  *
  * Every wall (straight **and** curved) ricochets: the velocity's component into the contact surface is
  * reversed and scaled by `restitution` (0 = dead stop, 1 = perfectly elastic) while the tangential
@@ -195,7 +195,7 @@ export function resolveBounce(
   let v = vel
 
   for (const w of walls) {
-    const c = wallContact(w, pos.x, pos.y)
+    const c = wallContact(w, pos)
     if (!c.body) {
       pos = clearOfCap(pos, c, r) // glance off a board end without a bounce
       continue
@@ -206,7 +206,7 @@ export function resolveBounce(
     const vn = v.x * c.nx + v.y * c.ny
     if (vn * side < 0) {
       // Reverse only the into-surface component, damped by restitution; tangential motion survives.
-      const j = (1 + restitution) * vn
+      const j = normalImpulse(vn, restitution)
       v = { x: v.x - j * c.nx, y: v.y - j * c.ny }
     }
     const push = side * r - c.sd
@@ -222,25 +222,17 @@ export function resolveBounce(
  * sagitta). Returns null when A, B, P are near-collinear (no meaningful curve — caller should fall back to a
  * straight segment). Oriented so its CCW sweep a0→a1 passes through P, matching what was drawn.
  */
-export function arcThrough(
-  ax: number,
-  ay: number,
-  bx: number,
-  by: number,
-  px: number,
-  py: number,
-  id: string,
-): WallArc | null {
-  const mx = (ax + bx) / 2
-  const my = (ay + by) / 2
-  const half = Math.hypot(bx - ax, by - ay) / 2
+export function arcThrough(a: Vec2, b: Vec2, p: Vec2, id: string): WallArc | null {
+  const mx = (a.x + b.x) / 2
+  const my = (a.y + b.y) / 2
+  const half = Math.hypot(b.x - a.x, b.y - a.y) / 2
   if (half < 1e-6) return null
-  const nx = (ay - by) / (half * 2)
-  const ny = (bx - ax) / (half * 2)
-  const sagitta = (px - mx) * nx + (py - my) * ny
+  const nx = (a.y - b.y) / (half * 2)
+  const ny = (b.x - a.x) / (half * 2)
+  const sagitta = (p.x - mx) * nx + (p.y - my) * ny
   if (Math.abs(sagitta) < 1e-3) return null
   const circle = circleThroughChord(mx, my, half, nx, ny, sagitta)
-  return orientedArc(circle, ax, ay, bx, by, px, py, id)
+  return orientedArc(circle, a.x, a.y, b.x, b.y, p.x, p.y, id)
 }
 
 /**

@@ -29,7 +29,7 @@ export interface NetClock {
   noteSnapshot(serverTick: number, localNow: number): void
   /** Server-clock time to render remote players at: local time mapped to server time, minus the playout delay. */
   serverRenderTime(localNow: number): number
-  /** Live server-clock time (no playout delay) — for extrapolating fast bodies like the puck near real-time. */
+  /** Live server-clock time (no playout delay) — for extrapolating a fast body near real-time. */
   serverNow(localNow: number): number
   /** Current adaptive interpolation delay in ms (for debug/HUD). */
   interpDelayMs(): number

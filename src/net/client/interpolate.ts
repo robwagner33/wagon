@@ -1,5 +1,8 @@
 import type { Vec2 } from '../../core'
 
+/** Re-exported from core/geom so `wagon/net` consumers keep importing `lerp` from here. */
+export { lerp } from '../../core'
+
 /**
  * Interpolation turns the server's discrete position snapshots into a continuous path: given the
  * samples around a moment in time, it produces the position to draw at that moment.
@@ -20,11 +23,6 @@ export interface Sample {
 
 /** Cap on buffered position samples per remote entity (~2s at 30 Hz). Bounds memory; far exceeds the interp delay's reach. */
 export const REMOTE_BUFFER_MAX = 60
-
-/** Linearly interpolate from `a` to `b` as `frac` goes 0→1 — a straight line, no smoothing. */
-export function lerp(a: number, b: number, frac: number): number {
-  return a + (b - a) * frac
-}
 
 /**
  * Sample an interpolated position from a time-ordered buffer at server time `t`.

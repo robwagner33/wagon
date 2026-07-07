@@ -1,4 +1,4 @@
-import { clamp, normalizeVec2, type Vec2 } from '../core'
+import { clamp, fromLocal, normalImpulse, normalizeVec2, toLocal, type Vec2 } from '../core'
 
 /**
  * Body↔body collision: the moving counterpart to `resolveWalls`/`resolveBounce` (which collide a body
@@ -58,7 +58,7 @@ export function resolveCircles(
   const vn = rvx * nx + rvy * ny
   if (vn >= 0) return { a: { pos: aPos, vel: a.vel }, b: { pos: bPos, vel: b.vel } }
 
-  const j = (-(1 + restitution) * vn) / invSum
+  const j = -normalImpulse(vn, restitution) / invSum
   const aVel = { x: a.vel.x - j * a.invMass * nx, y: a.vel.y - j * a.invMass * ny }
   const bVel = { x: b.vel.x + j * b.invMass * nx, y: b.vel.y + j * b.invMass * ny }
   return { a: { pos: aPos, vel: aVel }, b: { pos: bPos, vel: bVel } }
@@ -69,7 +69,7 @@ export function resolveCircles(
  * {@link resolveCircles} once, sequentially (Gauss-Seidel): a body's updated position + velocity from one
  * pair feed into its next pair, so a body wedged between two others settles against both in a single pass.
  *
- * O(n²) — fine for the handful of skaters on a rink; swap in a broadphase if a caller ever pushes hundreds.
+ * O(n²) — fine for a handful of bodies; swap in a broadphase if a caller ever pushes hundreds.
  * Iteration order is stable, so the result is deterministic for a given `bodies` order — keep that order
  * consistent across client prediction and server authority.
  */
@@ -137,10 +137,7 @@ export function resolveCircleRect(circle: CircleBody, rect: RectBody, restitutio
   const cos = Math.cos(rect.angle)
   const sin = Math.sin(rect.angle)
   // Circle center relative to the box, rotated into the box's local (axis-aligned) frame.
-  const dx = circle.pos.x - rect.pos.x
-  const dy = circle.pos.y - rect.pos.y
-  const lx = dx * cos + dy * sin
-  const ly = -dx * sin + dy * cos
+  const { x: lx, y: ly } = toLocal(circle.pos.x - rect.pos.x, circle.pos.y - rect.pos.y, cos, sin)
 
   const clx = clamp(lx, -rect.half.x, rect.half.x)
   const cly = clamp(ly, -rect.half.y, rect.half.y)
@@ -153,14 +150,13 @@ export function resolveCircleRect(circle: CircleBody, rect: RectBody, restitutio
   const { nlx, nly, overlap } = contact
 
   // Rotate the local contact normal back into world space.
-  const nx = nlx * cos - nly * sin
-  const ny = nlx * sin + nly * cos
+  const { x: nx, y: ny } = fromLocal(nlx, nly, cos, sin)
   const pos = { x: circle.pos.x + nx * overlap, y: circle.pos.y + ny * overlap }
 
   // Velocity impulse only when closing along the normal (the box is immovable, so invSum is the circle's).
   const vn = circle.vel.x * nx + circle.vel.y * ny
   if (vn >= 0) return { pos, vel: circle.vel }
-  const j = -(1 + restitution) * vn
+  const j = -normalImpulse(vn, restitution)
   return { pos, vel: { x: circle.vel.x + j * nx, y: circle.vel.y + j * ny } }
 }
 

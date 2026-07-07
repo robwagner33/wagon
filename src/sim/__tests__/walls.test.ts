@@ -122,7 +122,7 @@ describe('norm2pi', () => {
 describe('arcThrough', () => {
   it('builds an arc whose rim passes through the bulge point', () => {
     // Chord from (0,0) to (4,0), bulging up through (2,1).
-    const arc = arcThrough(0, 0, 4, 0, 2, 1, 'a')!
+    const arc = arcThrough({ x: 0, y: 0 }, { x: 4, y: 0 }, { x: 2, y: 1 }, 'a')!
     expect(arc).not.toBeNull()
     expect(arc.kind).toBe('arc')
     // Both endpoints and the bulge point sit on the circle.
@@ -132,11 +132,11 @@ describe('arcThrough', () => {
   })
 
   it('returns null when the three points are near-collinear', () => {
-    expect(arcThrough(0, 0, 4, 0, 2, 0, 'a')).toBeNull()
+    expect(arcThrough({ x: 0, y: 0 }, { x: 4, y: 0 }, { x: 2, y: 0 }, 'a')).toBeNull()
   })
 
   it('returns null for a degenerate (zero-length) chord', () => {
-    expect(arcThrough(1, 1, 1, 1, 2, 2, 'a')).toBeNull()
+    expect(arcThrough({ x: 1, y: 1 }, { x: 1, y: 1 }, { x: 2, y: 2 }, 'a')).toBeNull()
   })
 
   // The midpoint of the CCW sweep a0→a1 — where the arc bulges.
@@ -146,15 +146,15 @@ describe('arcThrough', () => {
   }
 
   it('orients the sweep so it bulges toward the given point, regardless of side', () => {
-    const up = arcThrough(0, 0, 4, 0, 2, 1, 'a')! // chord on the x-axis, bulge above
+    const up = arcThrough({ x: 0, y: 0 }, { x: 4, y: 0 }, { x: 2, y: 1 }, 'a')! // chord on the x-axis, bulge above
     expect(sweepMidpoint(up).y).toBeGreaterThan(0)
-    const down = arcThrough(0, 0, 4, 0, 2, -1, 'a')! // same chord, bulge below
+    const down = arcThrough({ x: 0, y: 0 }, { x: 4, y: 0 }, { x: 2, y: -1 }, 'a')! // same chord, bulge below
     expect(sweepMidpoint(down).y).toBeLessThan(0)
   })
 
   it('gives a larger radius for a shallower bulge', () => {
-    const shallow = arcThrough(0, 0, 4, 0, 2, 0.5, 'a')!
-    const deep = arcThrough(0, 0, 4, 0, 2, 2, 'a')!
+    const shallow = arcThrough({ x: 0, y: 0 }, { x: 4, y: 0 }, { x: 2, y: 0.5 }, 'a')!
+    const deep = arcThrough({ x: 0, y: 0 }, { x: 4, y: 0 }, { x: 2, y: 2 }, 'a')!
     expect(shallow.radius).toBeGreaterThan(deep.radius)
   })
 })

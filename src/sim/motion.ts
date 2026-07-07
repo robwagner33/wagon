@@ -1,4 +1,4 @@
-import { clamp, type Vec2 } from '../core'
+import { clamp, directionVector, type Vec2 } from '../core'
 import { resolveWalls } from './walls'
 import { collisionAt, type MapDoc, type Wall } from '../map'
 
@@ -105,7 +105,20 @@ export function stepMotion(
   env: MotionEnv,
   accel: number = env.tuning.accel,
 ): Motion {
-  const { friction, maxSpeed, stopEpsilon } = env.tuning
+  const v = integrateVelocity(vel, cmd, env.tuning, accel)
+  const newPos = move(pos, v.x, v.y, env)
+  const realized = { x: newPos.x - pos.x, y: newPos.y - pos.y }
+  return { pos: newPos, vel: resolveRebound(v, realized, env.tuning) }
+}
+
+/**
+ * Integrate one tick of a movement command into a velocity, before collision: normalize diagonals, accelerate
+ * toward `(dx, dy)` on top of friction-retained velocity, then clamp — input can't drive past `maxSpeed`, but a
+ * knockback carried in above it rides out under friction — and snap to rest below `stopEpsilon`. The pure
+ * velocity half of {@link stepMotion}.
+ */
+function integrateVelocity(vel: Vec2, cmd: { dx: number; dy: number }, tuning: MotionTuning, accel: number): Vec2 {
+  const { friction, maxSpeed, stopEpsilon } = tuning
   let dx = cmd.dx
   let dy = cmd.dy
   if (dx !== 0 && dy !== 0) {
@@ -123,9 +136,7 @@ export function stepMotion(
     vx = 0
     vy = 0
   }
-  const newPos = move(pos, vx, vy, env)
-  const realized = { x: newPos.x - pos.x, y: newPos.y - pos.y }
-  return { pos: newPos, vel: resolveRebound({ x: vx, y: vy }, realized, env.tuning) }
+  return { x: vx, y: vy }
 }
 
 /**
@@ -146,5 +157,6 @@ export function resolveRebound(attempted: Vec2, realized: Vec2, tuning: MotionTu
 
 /** Step `pos` one tick along `heading` (radians) by `speed` tiles, honoring bounds + collision. */
 export function stepHeading(pos: Vec2, heading: number, speed: number, env: MotionEnv): Vec2 {
-  return move(pos, Math.cos(heading) * speed, Math.sin(heading) * speed, env)
+  const dir = directionVector(heading)
+  return move(pos, dir.x * speed, dir.y * speed, env)
 }

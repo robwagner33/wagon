@@ -1,4 +1,4 @@
-import { directionVector, type Vec2 } from '../core'
+import { directionVector, toLocal, type Vec2 } from '../core'
 
 /**
  * The impulse + reach layer any attack system can share: an abstract {@link Hittable} body, the single
@@ -50,10 +50,7 @@ export function applyImpulse(body: Hittable, attackId: string, dv: Vec2): Vec2 {
  */
 export function inReach(origin: Vec2, facing: number, target: Vec2, reach: number, width: number): boolean {
   const { x: fx, y: fy } = directionVector(facing)
-  const dx = target.x - origin.x
-  const dy = target.y - origin.y
-  const along = dx * fx + dy * fy
-  const lateral = -dx * fy + dy * fx
+  const { x: along, y: lateral } = toLocal(target.x - origin.x, target.y - origin.y, fx, fy)
   return along >= 0 && along <= reach && Math.abs(lateral) <= width
 }
 
@@ -68,6 +65,6 @@ export function inCone(origin: Vec2, facing: number, target: Vec2, radius: numbe
   const dist = Math.hypot(dx, dy)
   if (dist > radius) return false
   if (dist === 0) return true
-  const along = (dx * fx + dy * fy) / dist
-  return along >= Math.cos(angle / 2)
+  const { x: along } = toLocal(dx, dy, fx, fy)
+  return along / dist >= Math.cos(angle / 2)
 }

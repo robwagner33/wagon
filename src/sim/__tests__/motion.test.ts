@@ -5,6 +5,7 @@ import {
   clampToBounds,
   mapEnv,
   move,
+  resolveRebound,
   stepHeading,
   stepMotion,
   type Bounds,
@@ -95,6 +96,26 @@ describe('stepHeading', () => {
     const to = stepHeading({ x: 0, y: 0 }, 0, 0.3, env())
     expect(to.x).toBeCloseTo(0.3)
     expect(to.y).toBeCloseTo(0)
+  })
+})
+
+describe('resolveRebound', () => {
+  it('returns the realized velocity unchanged when attempted speed is at/below maxSpeed', () => {
+    const realized = { x: 0.1, y: 0 }
+    expect(resolveRebound({ x: 0.3, y: 0 }, realized, TUNING)).toBe(realized)
+  })
+
+  it('reflects a wall-blocked axis of a fast (knockback) body, damped by wallRestitution', () => {
+    // attempted 1.0 in x (above maxSpeed), realized 0 (a wall stopped it) → -1.0 * 0.4
+    const out = resolveRebound({ x: 1.0, y: 0 }, { x: 0, y: 0 }, TUNING)
+    expect(out.x).toBeCloseTo(-0.4)
+  })
+
+  it('passes an unblocked axis through while reflecting the blocked one', () => {
+    // x blocked (realized 0 < attempted 1); y unblocked (realized == attempted 0.5)
+    const out = resolveRebound({ x: 1.0, y: 0.5 }, { x: 0, y: 0.5 }, TUNING)
+    expect(out.x).toBeCloseTo(-0.4)
+    expect(out.y).toBeCloseTo(0.5)
   })
 })
 
