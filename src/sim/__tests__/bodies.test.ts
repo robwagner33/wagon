@@ -1,5 +1,25 @@
 import { describe, expect, it } from 'vitest'
-import { resolveBlocked, resolveBodies, resolveCircleRect, resolveCircles, type CircleBody, type RectBody } from '../bodies'
+import {
+  hitsRect,
+  resolveBlocked,
+  resolveBodies,
+  resolveCircleRect,
+  resolveCircles,
+  type CircleBody,
+  type RectBody,
+} from '../bodies'
+
+describe('hitsRect', () => {
+  const rect: RectBody = { pos: { x: 5, y: 5 }, half: { x: 1, y: 1 }, angle: 0, invMass: 0 }
+  it('point-in-rect at radius 0', () => {
+    expect(hitsRect({ x: 5.5, y: 5 }, 0, rect)).toBe(true)
+    expect(hitsRect({ x: 6.5, y: 5 }, 0, rect)).toBe(false)
+  })
+  it('radius widens the overlap by the collider', () => {
+    expect(hitsRect({ x: 6.5, y: 5 }, 0.6, rect)).toBe(true) // 6.5 within 5 + (1 + 0.6)
+    expect(hitsRect({ x: 6.7, y: 5 }, 0.6, rect)).toBe(false)
+  })
+})
 
 /** A circular body at `pos` moving at `vel`, radius 0.5, with the given inverse mass (0 = immovable). */
 function body(pos: { x: number; y: number }, vel: { x: number; y: number }, invMass: number): CircleBody {

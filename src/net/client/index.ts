@@ -1,6 +1,7 @@
 export * from './interpolate'
 export * from './buffer'
 export * from './predict'
+export * from './predicted-entity'
 export * from './remotes'
 export * from './smooth'
 export * from './clock'

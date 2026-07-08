@@ -126,6 +126,14 @@ export interface RectBody {
 }
 
 /**
+ * Whether a circle of `radius` centered at `pos` overlaps an axis-aligned rect (`angle` ignored — a cheap
+ * broad test for a static blocker). Radius `0` is the plain point-in-rect test.
+ */
+export function hitsRect(pos: Vec2, radius: number, rect: RectBody): boolean {
+  return Math.abs(pos.x - rect.pos.x) < rect.half.x + radius && Math.abs(pos.y - rect.pos.y) < rect.half.y + radius
+}
+
+/**
  * Resolve a movable circle against an immovable oriented box, returning the circle's separated position and
  * post-impulse velocity (the box never moves). The circle's center is rotated into the box's local frame,
  * clamped to the box extents to find the closest surface point, then pushed back out along that contact
