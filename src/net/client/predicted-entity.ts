@@ -1,6 +1,6 @@
 import type { Vec2 } from '../../core'
 import { lerp } from '../../core'
-import { createErrorSmoother } from './smooth'
+import { absorbCorrection, createErrorSmoother } from './smooth'
 
 /**
  * Client-side prediction for a NON-self, no-input authoritative entity — one the server owns and the client
@@ -47,7 +47,7 @@ export function createPredictedEntity(
     const before = predict(liveTick)
     truth = newTruth
     const after = predict(liveTick)
-    if (before && after) smoother.absorb(before.x - after.x, before.y - after.y)
+    absorbCorrection(smoother, before, after)
   }
 
   function render(liveTick: number, dt: number): Vec2 | null {

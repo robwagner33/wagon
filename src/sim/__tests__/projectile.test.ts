@@ -3,7 +3,7 @@ import {
   createProjectileStore,
   nearestHit,
   stepProjectiles,
-  type FlightEnv,
+  type ScanEnv,
   type Hittable,
   type Projectile,
   type ProjectileHandlers,
@@ -29,7 +29,7 @@ const target = (id: string, x: number, y: number): Hittable => ({
   apply() {},
 })
 
-const OPEN: FlightEnv = { walls: [], blocker: null, width: 12, height: 12 }
+const OPEN: ScanEnv = { walls: [], blocker: null, width: 12, height: 12 }
 
 /** Handlers that record which terminal fired, on which body. */
 function recorder(bodies: Hittable[] = []) {

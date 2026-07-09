@@ -1,7 +1,8 @@
 import { describe, expect, it } from 'vitest'
 import type { Vec2 } from '../../core'
 import type { Wall } from '../../map'
-import { arcSweep, arcThrough, norm2pi, resolveBounce, resolveWalls } from '../walls'
+import { arcSweep, norm2pi, resolveBounce, resolveWalls } from '../walls'
+import { arcThrough } from '../wall-arc'
 
 /** Collider half-extent the resolver is exercised at — matches what the games pass. */
 const R = 0.45

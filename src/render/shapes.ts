@@ -1,4 +1,4 @@
-import type { Vec2 } from '../core'
+import { directionVector, fromLocal, type Vec2 } from '../core'
 
 /** Canvas 2D drawing primitives: stroked/filled shapes and a facing-frame offset. Game-agnostic — callers pass their own colors, sizes, and units. */
 
@@ -142,7 +142,7 @@ export function fillCircle(ctx: CanvasRenderingContext2D, x: number, y: number, 
  * `dir` — `fwd` is along the heading, `lat` is to its left. Used to mount attachments on a rotating body.
  */
 export function bodyPoint(cx: number, cy: number, bodyPx: number, fwd: number, lat: number, dir: number): Vec2 {
-  const fx = Math.cos(dir)
-  const fy = Math.sin(dir)
-  return { x: cx + (fx * fwd - fy * lat) * bodyPx, y: cy + (fy * fwd + fx * lat) * bodyPx }
+  const { x: cos, y: sin } = directionVector(dir)
+  const local = fromLocal(fwd, lat, cos, sin)
+  return { x: cx + local.x * bodyPx, y: cy + local.y * bodyPx }
 }

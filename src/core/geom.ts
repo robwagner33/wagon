@@ -37,6 +37,16 @@ export function directionVector(angle: number): Vec2 {
   return { x: Math.cos(angle), y: Math.sin(angle) }
 }
 
+/** Length (magnitude) of vector `v`. */
+export function len(v: Vec2): number {
+  return Math.hypot(v.x, v.y)
+}
+
+/** Straight-line distance between points `a` and `b`. */
+export function dist(a: Vec2, b: Vec2): number {
+  return Math.hypot(a.x - b.x, a.y - b.y)
+}
+
 /**
  * Rotate a delta `(dx, dy)` into the local frame whose basis unit vector is `(cos, sin)`: `x` is the
  * component along that basis, `y` the component perpendicular (to its left). The inverse of {@link fromLocal}.

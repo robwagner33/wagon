@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
-import { beamLength, pierce, type BeamEnv, type Hittable } from '../index'
+import { beamLength, pierce, type ScanEnv, type Hittable } from '../index'
 
-const OPEN: BeamEnv = { walls: [], blocker: null, width: 12, height: 12 }
+const OPEN: ScanEnv = { walls: [], blocker: null, width: 12, height: 12 }
 const body = (id: string, x: number, y: number, radius = 0.3): Hittable => ({
   id,
   pos: { x, y },
@@ -20,7 +20,7 @@ describe('beamLength', () => {
     expect(len).toBeLessThanOrEqual(2 + 1e-6) // bound at x=12, from x=10
   })
   it('stops at an extra rect blocker', () => {
-    const env: BeamEnv = { ...OPEN, blocker: { pos: { x: 5, y: 6 }, half: { x: 0.5, y: 0.5 }, angle: 0, invMass: 0 } }
+    const env: ScanEnv = { ...OPEN, blocker: { pos: { x: 5, y: 6 }, half: { x: 0.5, y: 0.5 }, angle: 0, invMass: 0 } }
     const len = beamLength({ x: 1, y: 6 }, { x: 1, y: 0 }, 100, env, 0.12)
     expect(len).toBeLessThan(4.6) // reaches ~the blocker's near face at x≈4.5
   })

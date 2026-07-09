@@ -1,4 +1,4 @@
-import type { Vec2 } from '../core'
+import { len, type Vec2 } from '../core'
 
 /**
  * A swept-motion iterator: it advances a point along a velocity in short, tunnel-safe substeps and hands each
@@ -52,7 +52,7 @@ export function march(
   visit: (step: Substep) => MarchResult,
   step: number = DEFAULT_SUBSTEP,
 ): { pos: Vec2; vel: Vec2; stopped: boolean } {
-  const steps = Math.max(1, Math.ceil(Math.hypot(vel.x, vel.y) / step))
+  const steps = Math.max(1, Math.ceil(len(vel) / step))
   let pos = start
   let v = vel
   for (let index = 0; index < steps; index++) {

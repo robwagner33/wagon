@@ -102,6 +102,22 @@ describe('runRoomHost', () => {
     expect(reg.get('AAAA')?.tick).toBe(1) // its own tick advanced
   })
 
+  it('emits each drained event to the room after its state update', () => {
+    vi.useFakeTimers()
+    const reg = createRoomRegistry<TestRoom>()
+    reg.register(room('AAAA', 'a', ['a'], 'playing'))
+    const { io, emits } = mockIo()
+    const { activate, handlers } = recording()
+    const ev = { kind: 'goal' }
+    runRoomHost(io, reg, { ...handlers, drainEvents: () => [ev] }, { activate, tickMs: 1000 })
+
+    vi.advanceTimersByTime(1000)
+    expect(emits).toEqual([
+      { code: 'AAAA', event: Events.StateUpdate, payload: { tick: 0, room: 'AAAA' } },
+      { code: 'AAAA', event: Events.Event, payload: ev },
+    ])
+  })
+
   it('on disconnect leaves the world (when playing) then reports a surviving room via onLeave', () => {
     const reg = createRoomRegistry<TestRoom>()
     reg.register(room('AAAA', 'host', ['host', 'guest'], 'playing'))

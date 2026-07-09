@@ -1,7 +1,7 @@
-import type { Vec2 } from '../core'
+import { dist, len, type Vec2 } from '../core'
 import type { MapDoc } from '../map'
-import { march } from './march'
-import { resolveWalls, resolveBounce } from './walls'
+import { march, type MarchResult } from './march'
+import { hitWall, resolveBounce } from './walls'
 import { hitsRect, type RectBody } from './bodies'
 import type { Hittable } from './strike'
 
@@ -44,8 +44,12 @@ export function createProjectileStore<T extends Projectile>(): ProjectileStore<T
   return { map: new Map(), idCounter: 0 }
 }
 
-/** The static world a projectile flies through this tick: analytic walls, one optional extra rect blocker, and the rink bounds. */
-export interface FlightEnv {
+/**
+ * The static world a swept mover (a flying projectile, a scanning beam) tests for contact this tick: analytic
+ * walls, one optional extra rect blocker, and the rectangular bounds. Shared by {@link stepProjectiles} and
+ * {@link beamLength}.
+ */
+export interface ScanEnv {
   walls: MapDoc['walls']
   blocker: RectBody | null
   width: number
@@ -77,7 +81,7 @@ export interface ProjectileHandlers<T extends Projectile, B extends Hittable = H
  */
 export function stepProjectiles<T extends Projectile, B extends Hittable>(
   store: ProjectileStore<T>,
-  env: FlightEnv,
+  env: ScanEnv,
   handlers: ProjectileHandlers<T, B>,
   step: number,
 ): void {
@@ -100,45 +104,35 @@ export function stepProjectiles<T extends Projectile, B extends Hittable>(
 function flyProjectile<T extends Projectile, B extends Hittable>(
   proj: T,
   bodies: B[],
-  env: FlightEnv,
+  env: ScanEnv,
   store: ProjectileStore<T>,
   handlers: ProjectileHandlers<T, B>,
   step: number,
 ): void {
   const { walls, blocker, width, height } = env
+  // Fire the terminal handler, drop the projectile from the store, and stop the sweep at `at`.
+  const terminate = (at: Vec2, fire: () => void): MarchResult => {
+    fire()
+    store.map.delete(proj.id)
+    return { pos: at, stop: true }
+  }
   march(
     proj.pos,
     proj.vel,
     ({ from, to }) => {
-      if (walls?.length) {
-        const clamped = resolveWalls(walls, from, to, proj.radius)
-        if (Math.hypot(clamped.x - to.x, clamped.y - to.y) > 1e-4) {
-          if (proj.bounce !== undefined) {
-            bounceOffWall(proj, walls, from, to)
-            return { pos: proj.pos, vel: proj.vel }
-          }
-          handlers.onStatic(proj, clamped)
-          store.map.delete(proj.id)
-          return { pos: clamped, stop: true }
+      const clamped = walls?.length ? hitWall(walls, from, to, proj.radius) : null
+      if (clamped) {
+        if (proj.bounce !== undefined) {
+          bounceOffWall(proj, walls!, from, to)
+          return { pos: proj.pos, vel: proj.vel }
         }
+        return terminate(clamped, () => handlers.onStatic(proj, clamped))
       }
-      if (blocker && hitsRect(to, proj.radius, blocker)) {
-        handlers.onStatic(proj, to)
-        store.map.delete(proj.id)
-        return { pos: to, stop: true }
-      }
+      if (blocker && hitsRect(to, proj.radius, blocker)) return terminate(to, () => handlers.onStatic(proj, to))
       proj.pos = to
-      if (to.x < 0 || to.x > width || to.y < 0 || to.y > height) {
-        handlers.onStatic(proj, to)
-        store.map.delete(proj.id)
-        return { pos: to, stop: true }
-      }
+      if (to.x < 0 || to.x > width || to.y < 0 || to.y > height) return terminate(to, () => handlers.onStatic(proj, to))
       const body = nearestHit(proj, bodies)
-      if (body) {
-        handlers.onBody(proj, body, to)
-        store.map.delete(proj.id)
-        return { pos: to, stop: true }
-      }
+      if (body) return terminate(to, () => handlers.onBody(proj, body, to))
       return { pos: to }
     },
     step,
@@ -167,7 +161,7 @@ function settleBounce<T extends Projectile>(
   handlers: ProjectileHandlers<T>,
 ): boolean {
   proj.vel = { x: proj.vel.x * SETTLE_FRICTION, y: proj.vel.y * SETTLE_FRICTION }
-  if (Math.hypot(proj.vel.x, proj.vel.y) > REST_SPEED) return false
+  if (len(proj.vel) > REST_SPEED) return false
   handlers.onRest(proj)
   store.map.delete(proj.id)
   return true
@@ -178,10 +172,10 @@ export function nearestHit<B extends Hittable>(proj: Projectile, bodies: B[]): B
   let best: B | null = null
   let bestDist = Infinity
   for (const body of bodies) {
-    const dist = Math.hypot(proj.pos.x - body.pos.x, proj.pos.y - body.pos.y)
-    if (dist <= proj.radius + body.radius && dist < bestDist) {
+    const d = dist(proj.pos, body.pos)
+    if (d <= proj.radius + body.radius && d < bestDist) {
       best = body
-      bestDist = dist
+      bestDist = d
     }
   }
   return best

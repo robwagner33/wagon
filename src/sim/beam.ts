@@ -1,8 +1,8 @@
-import type { Vec2 } from '../core'
-import type { MapDoc } from '../map'
+import { dist, type Vec2 } from '../core'
 import { march } from './march'
-import { resolveWalls } from './walls'
-import { hitsRect, type RectBody } from './bodies'
+import { hitWall } from './walls'
+import { hitsRect } from './bodies'
+import { type ScanEnv } from './projectile'
 import type { Hittable } from './strike'
 
 /**
@@ -10,38 +10,29 @@ import type { Hittable } from './strike'
  * bound, or a range cap) and which bodies it pierces along the way. No state, no flight — the whole cast resolves
  * this tick. The engine owns only the geometry; what a pierced body takes (damage, impulse) and any FX are the
  * game's, via the `onHit` callback. Pure + deterministic (the game supplies the body list in a stable order).
+ *
+ * The static world a beam scans (walls + blocker + bounds) is the shared {@link ScanEnv}.
  */
-
-/** The static world a beam scans for its endpoint: analytic walls, one optional extra rect blocker, and the bounds. */
-export interface BeamEnv {
-  walls: MapDoc['walls']
-  blocker: RectBody | null
-  width: number
-  height: number
-}
 
 /**
  * How far (tiles) a beam reaches from `muzzle` along the unit `aim` before it stops — the nearest of its `cap`
- * range, a wall, the blocker, or the rink bound. Marches forward in `step`-length substeps; returns the exact
+ * range, a wall, the blocker, or the bound. Marches forward in `step`-length substeps; returns the exact
  * `cap` when unobstructed (no float drift), else the distance to the last clear point.
  */
-export function beamLength(muzzle: Vec2, aim: Vec2, cap: number, env: BeamEnv, step: number): number {
+export function beamLength(muzzle: Vec2, aim: Vec2, cap: number, env: ScanEnv, step: number): number {
   const limit = cap === Infinity ? Math.hypot(env.width, env.height) : cap
   const res = march(
     muzzle,
     { x: aim.x * limit, y: aim.y * limit },
     ({ from, to }) => {
-      if (env.walls?.length) {
-        const clamped = resolveWalls(env.walls, from, to, 0)
-        if (Math.hypot(clamped.x - to.x, clamped.y - to.y) > 1e-4) return { pos: from, stop: true }
-      }
+      if (env.walls?.length && hitWall(env.walls, from, to, 0)) return { pos: from, stop: true }
       if (env.blocker && hitsRect(to, 0, env.blocker)) return { pos: from, stop: true }
       if (to.x < 0 || to.x > env.width || to.y < 0 || to.y > env.height) return { pos: from, stop: true }
       return { pos: to }
     },
     step,
   )
-  return res.stopped ? Math.hypot(res.pos.x - muzzle.x, res.pos.y - muzzle.y) : limit
+  return res.stopped ? dist(res.pos, muzzle) : limit
 }
 
 /**

@@ -1,5 +1,5 @@
 import type { Vec2 } from '../../core'
-import { createErrorSmoother } from './smooth'
+import { absorbCorrection, createErrorSmoother } from './smooth'
 
 /**
  * The local player's predict + reconcile loop, shared by every game on the engine. The game supplies its own
@@ -99,7 +99,7 @@ export function createSelfPredictor<TState extends { pos: Vec2 }, TInput extends
     const before = predictor.state()
     predictor.reconcile(authoritative, lastSeq)
     const after = predictor.state()
-    if (before && after) smoother.absorb(before.pos.x - after.pos.x, before.pos.y - after.pos.y)
+    absorbCorrection(smoother, before?.pos ?? null, after?.pos ?? null)
   }
 
   return {

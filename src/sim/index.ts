@@ -1,5 +1,6 @@
 export * from './bodies'
 export * from './walls'
+export * from './wall-arc'
 export * from './march'
 export * from './motion'
 export * from './prop'

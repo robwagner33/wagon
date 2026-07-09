@@ -1,4 +1,4 @@
-import { clamp, directionVector, type Vec2 } from '../core'
+import { clamp, directionVector, len, type Vec2 } from '../core'
 import { resolveWalls } from './walls'
 import { collisionAt, type MapDoc, type Wall } from '../map'
 
@@ -128,7 +128,7 @@ function integrateVelocity(vel: Vec2, cmd: { dx: number; dy: number }, tuning: M
   let vx = vel.x * friction + dx * accel
   let vy = vel.y * friction + dy * accel
   const speed = Math.hypot(vx, vy)
-  const cap = Math.max(maxSpeed, Math.hypot(vel.x, vel.y) * friction)
+  const cap = Math.max(maxSpeed, len(vel) * friction)
   if (speed > cap) {
     vx = (vx / speed) * cap
     vy = (vy / speed) * cap
@@ -146,7 +146,7 @@ function integrateVelocity(vel: Vec2, cmd: { dx: number; dy: number }, tuning: M
  */
 export function resolveRebound(attempted: Vec2, realized: Vec2, tuning: MotionTuning): Vec2 {
   const { maxSpeed, stopEpsilon, wallRestitution } = tuning
-  if (Math.hypot(attempted.x, attempted.y) <= maxSpeed) return realized
+  if (len(attempted) <= maxSpeed) return realized
   const blockedX = Math.abs(realized.x) + stopEpsilon < Math.abs(attempted.x)
   const blockedY = Math.abs(realized.y) + stopEpsilon < Math.abs(attempted.y)
   return {

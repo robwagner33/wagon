@@ -46,3 +46,12 @@ export function createErrorSmoother(timeConstant: number, snapDist: number): Err
 
   return { absorb, sample }
 }
+
+/**
+ * Fold a predicted-vs-reconciled correction into `smoother`: the delta from `before` (predicted position
+ * pre-reconcile) to `after` (post-reconcile), when both are known — a no-op if either is null (nothing to
+ * correct yet). The shared reconcile step for {@link createSelfPredictor} and {@link createPredictedEntity}.
+ */
+export function absorbCorrection(smoother: ErrorSmoother, before: Vec2 | null, after: Vec2 | null): void {
+  if (before && after) smoother.absorb(before.x - after.x, before.y - after.y)
+}
