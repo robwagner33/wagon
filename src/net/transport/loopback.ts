@@ -29,6 +29,9 @@ export function createLoopbackHost<TInput, TMsg, TSnapshot, TEvent = never>(
     emit: (ev) => {
       for (const sink of eventSinks.values()) sink(ev)
     },
+    peers: () => [...sinks.keys()],
+    sendTo: (peerId, snap) => sinks.get(peerId)?.(snap),
+    emitTo: (peerId, ev) => eventSinks.get(peerId)?.(ev),
   }
 
   bindHost(host, handlers)

@@ -21,6 +21,16 @@ export interface HostTransport<TInput, TMsg, TSnapshot, TEvent = never> {
   broadcast(snap: TSnapshot): void
   /** Send a one-shot event to every peer — the discrete counterpart of `broadcast`. */
   emit(ev: TEvent): void
+  /**
+   * The peers this transport can currently reach. Present only on transports that support per-peer sends;
+   * {@link hostStep} reads it to fan a tailored snapshot out when the game implements
+   * {@link HostHandlers.snapshotFor}. Absent on broadcast-only transports.
+   */
+  peers?(): string[]
+  /** Send a snapshot to one peer — the per-peer counterpart of `broadcast`. Pairs with {@link peers}. */
+  sendTo?(peerId: string, snap: TSnapshot): void
+  /** Send a one-shot event to one peer — the per-peer counterpart of `emit`. */
+  emitTo?(peerId: string, ev: TEvent): void
 }
 
 /** The four peer-event callbacks a host transport fires; lazy no-ops until a host loop registers real ones. */
@@ -93,4 +103,14 @@ export interface HostHandlers<TInput, TMsg, TSnapshot, TEvent = never> {
   tick(tickNum: number): void
   snapshot(tickNum: number): TSnapshot
   drainEvents?(): TEvent[]
+  /**
+   * Build the snapshot for one peer. When a game implements this AND the transport supports per-peer sends
+   * ({@link HostTransport.peers}/{@link HostTransport.sendTo}), the host loop sends each peer its own
+   * snapshot instead of one broadcast — the seam for fog of war or any per-seat view. Return `null` to send
+   * that peer nothing this tick (e.g. a spectator, or a player with no revealed changes). A game that
+   * implements this still needs `snapshot` for transports that only broadcast.
+   */
+  snapshotFor?(tickNum: number, peerId: string): TSnapshot | null
+  /** Per-peer one-shot events, drained per peer after that peer's snapshot. The counterpart of `drainEvents`. */
+  drainEventsFor?(peerId: string): TEvent[]
 }

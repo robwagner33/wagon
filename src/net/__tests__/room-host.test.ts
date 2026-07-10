@@ -102,6 +102,39 @@ describe('runRoomHost', () => {
     expect(reg.get('AAAA')?.tick).toBe(1) // its own tick advanced
   })
 
+  it('sends each member its own snapshot when the game supplies snapshotFor', () => {
+    vi.useFakeTimers()
+    const reg = createRoomRegistry<TestRoom>()
+    reg.register(room('AAAA', 'a', ['a', 'b'], 'playing'))
+    const { io, emits } = mockIo()
+    const { activate, handlers } = recording()
+    const snapshotFor = (tick: number, id: string): Snap => ({ tick, room: `AAAA:${id}` })
+    runRoomHost(io, reg, { ...handlers, snapshotFor }, { activate, tickMs: 1000 })
+
+    vi.advanceTimersByTime(1000)
+    expect(emits).toEqual([
+      { code: 'a', event: Events.StateUpdate, payload: { tick: 0, room: 'AAAA:a' } },
+      { code: 'b', event: Events.StateUpdate, payload: { tick: 0, room: 'AAAA:b' } },
+    ])
+  })
+
+  it('skips a member whose per-peer snapshot is null and delivers their per-peer events', () => {
+    vi.useFakeTimers()
+    const reg = createRoomRegistry<TestRoom>()
+    reg.register(room('AAAA', 'a', ['a', 'b'], 'playing'))
+    const { io, emits } = mockIo()
+    const { activate, handlers } = recording()
+    const snapshotFor = (tick: number, id: string): Snap | null => (id === 'b' ? null : { tick, room: id })
+    const drainEventsFor = (id: string) => (id === 'a' ? [{ kind: 'rune', id }] : [])
+    runRoomHost(io, reg, { ...handlers, snapshotFor, drainEventsFor }, { activate, tickMs: 1000 })
+
+    vi.advanceTimersByTime(1000)
+    expect(emits).toEqual([
+      { code: 'a', event: Events.StateUpdate, payload: { tick: 0, room: 'a' } },
+      { code: 'a', event: Events.Event, payload: { kind: 'rune', id: 'a' } },
+    ])
+  })
+
   it('emits each drained event to the room after its state update', () => {
     vi.useFakeTimers()
     const reg = createRoomRegistry<TestRoom>()

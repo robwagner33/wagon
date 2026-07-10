@@ -19,13 +19,19 @@ class FakeSocket {
 class FakeServer {
   private connectionCb: (socket: FakeSocket) => void = () => {}
   emitted: Array<[string, unknown]> = []
+  toEmits: Array<[string, string, unknown]> = []
+  sockets = { sockets: new Map<string, FakeSocket>() }
   on(event: string, cb: (socket: FakeSocket) => void) {
     if (event === 'connection') this.connectionCb = cb
   }
   emit(event: string, payload: unknown) {
     this.emitted.push([event, payload])
   }
+  to(target: string) {
+    return { emit: (event: string, payload: unknown) => this.toEmits.push([target, event, payload]) }
+  }
   connect(socket: FakeSocket) {
+    this.sockets.sockets.set(socket.id, socket)
     this.connectionCb(socket)
   }
 }
@@ -40,7 +46,7 @@ interface TestMsg {
 
 function setup() {
   const io = new FakeServer()
-  const transport = createSocketHost<TestInput, TestMsg, unknown>(io as unknown as Server)
+  const transport = createSocketHost<TestInput, TestMsg, unknown, { kind: string }>(io as unknown as Server)
   return { io, transport }
 }
 
@@ -105,5 +111,26 @@ describe('createSocketHost', () => {
     const snap = { tick: 7, players: [] }
     transport.broadcast(snap)
     expect(io.emitted).toContainEqual([Events.StateUpdate, snap])
+  })
+
+  it('lists connected sockets as the addressable peers', () => {
+    const { io, transport } = setup()
+    io.connect(new FakeSocket('a'))
+    io.connect(new FakeSocket('b'))
+    expect(transport.peers?.()).toEqual(['a', 'b'])
+  })
+
+  it('sends a per-peer snapshot to that socket id as a StateUpdate', () => {
+    const { io, transport } = setup()
+    const snap = { tick: 3 }
+    transport.sendTo?.('a', snap)
+    expect(io.toEmits).toEqual([['a', Events.StateUpdate, snap]])
+  })
+
+  it('sends a per-peer event to that socket id as an Event', () => {
+    const { io, transport } = setup()
+    const ev = { kind: 'rune' }
+    transport.emitTo?.('b', ev)
+    expect(io.toEmits).toEqual([['b', Events.Event, ev]])
   })
 })

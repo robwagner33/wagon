@@ -61,16 +61,35 @@ export function runRoomHost<TInput, TMsg, TSnapshot, TEvent, TRoom extends Room<
     })
   })
 
-  // One fixed-tick clock drives every playing room: activate it, advance it, broadcast its snapshot to its
-  // own sockets only (io.to(code)), then emit any one-shot events the tick queued. Lobby rooms don't tick.
-  // Each room carries its own tick counter.
+  // One fixed-tick clock drives every playing room: activate it, advance it, then push state to its own
+  // sockets only. A game with per-peer snapshots ({@link HostHandlers.snapshotFor}) gets one tailored
+  // snapshot per member (fog of war); otherwise the room broadcasts a single snapshot to io.to(code). Lobby
+  // rooms don't tick. Each room carries its own tick counter.
   setInterval(() => {
     for (const room of registry.playing()) {
       activate(room)
       handlers.tick(room.tick)
-      io.to(room.code).emit(Events.StateUpdate, handlers.snapshot(room.tick))
-      for (const ev of handlers.drainEvents?.() ?? []) io.to(room.code).emit(Events.Event, ev)
+      sendRoomState(io, handlers, room)
       room.tick++
     }
   }, tickMs)
+}
+
+/** Push one tick's state to a room's members: per-peer when the game supports it, else one broadcast. */
+function sendRoomState<TInput, TMsg, TSnapshot, TEvent>(
+  io: Server,
+  handlers: HostHandlers<TInput, TMsg, TSnapshot, TEvent>,
+  room: Room<unknown, Member>,
+): void {
+  if (handlers.snapshotFor) {
+    for (const member of room.members) {
+      const snap = handlers.snapshotFor(room.tick, member.id)
+      if (snap !== null) io.to(member.id).emit(Events.StateUpdate, snap)
+      for (const ev of handlers.drainEventsFor?.(member.id) ?? []) io.to(member.id).emit(Events.Event, ev)
+    }
+    return
+  }
+
+  io.to(room.code).emit(Events.StateUpdate, handlers.snapshot(room.tick))
+  for (const ev of handlers.drainEvents?.() ?? []) io.to(room.code).emit(Events.Event, ev)
 }

@@ -89,3 +89,77 @@ describe('hostStep', () => {
     expect(emit).not.toHaveBeenCalled()
   })
 })
+
+/** A transport that can address individual peers, capturing every per-peer send. */
+function perPeerTransport(ids: string[]) {
+  const sent: { id: string; snap: Snap }[] = []
+  const emitted: { id: string; ev: string }[] = []
+  const broadcast = vi.fn()
+  const emit = vi.fn()
+
+  const transport: HostTransport<number, string, Snap, string> = {
+    onPeerJoin: () => {},
+    onPeerLeave: () => {},
+    onInput: () => {},
+    onMessage: () => {},
+    broadcast,
+    emit,
+    peers: () => ids,
+    sendTo: (id, snap) => sent.push({ id, snap }),
+    emitTo: (id, ev) => emitted.push({ id, ev }),
+  }
+  return { transport, sent, emitted, broadcast, emit }
+}
+
+describe('hostStep per-peer', () => {
+  it('sends each peer its own snapshot instead of broadcasting', () => {
+    const { transport, sent, broadcast } = perPeerTransport(['a', 'b'])
+    const handlers = recordingHandlers()
+    handlers.snapshotFor = (tick, id) => ({ tick, peer: id }) as unknown as Snap
+
+    hostStep(transport, handlers, 5)
+
+    expect(broadcast).not.toHaveBeenCalled()
+    expect(sent).toEqual([
+      { id: 'a', snap: { tick: 5, peer: 'a' } },
+      { id: 'b', snap: { tick: 5, peer: 'b' } },
+    ])
+  })
+
+  it('skips a peer whose snapshotFor returns null', () => {
+    const { transport, sent } = perPeerTransport(['a', 'b'])
+    const handlers = recordingHandlers()
+    handlers.snapshotFor = (tick, id) => (id === 'b' ? null : ({ tick, peer: id } as unknown as Snap))
+
+    hostStep(transport, handlers, 5)
+    expect(sent.map((s) => s.id)).toEqual(['a'])
+  })
+
+  it('drains and delivers per-peer events after each snapshot', () => {
+    const { transport, emitted } = perPeerTransport(['a', 'b'])
+    const handlers = recordingHandlers()
+    handlers.snapshotFor = (tick, id) => ({ tick, peer: id }) as unknown as Snap
+    handlers.drainEventsFor = (id) => [`ev-${id}`]
+
+    hostStep(transport, handlers, 5)
+    expect(emitted).toEqual([
+      { id: 'a', ev: 'ev-a' },
+      { id: 'b', ev: 'ev-b' },
+    ])
+  })
+
+  it('falls back to broadcast when the game has no snapshotFor', () => {
+    const { transport, broadcast, sent } = perPeerTransport(['a', 'b'])
+    hostStep(transport, recordingHandlers(), 5)
+    expect(broadcast).toHaveBeenCalledWith({ tick: 5 })
+    expect(sent).toHaveLength(0)
+  })
+
+  it('falls back to broadcast when the transport cannot address peers', () => {
+    const { transport, broadcast } = mockTransport()
+    const handlers = recordingHandlers()
+    handlers.snapshotFor = (tick, id) => ({ tick, peer: id }) as unknown as Snap
+    hostStep(transport, handlers, 5)
+    expect(broadcast).toHaveBeenCalledWith({ tick: 5 })
+  })
+})
