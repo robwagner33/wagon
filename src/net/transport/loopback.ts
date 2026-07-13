@@ -9,11 +9,17 @@ import { makeHostCallbacks, type HostHandlers, type HostTransport, type NetClien
  *
  * The game supplies its {@link HostHandlers} (so the loopback stays game-agnostic) and the tick interval;
  * any one-time world setup (e.g. loading the map) is the game's job before calling this.
+ *
+ * Pass `tickMs: null` to drive ticks yourself via the returned `step`, calling it once per fixed tick of
+ * the game's own loop. A `setInterval` host is a second clock that drifts against the local client's
+ * accumulator, so it periodically runs a tick the client has not predicted — a reconcile correction of one
+ * tick's motion, felt as a stutter. Stepping in lockstep makes the offline host deterministic with local
+ * prediction: zero corrections.
  */
 export function createLoopbackHost<TInput, TMsg, TSnapshot, TEvent = never>(
   handlers: HostHandlers<TInput, TMsg, TSnapshot, TEvent>,
-  tickMs: number,
-): { connect: () => NetClient<TInput, TMsg, TSnapshot, TEvent> } {
+  tickMs: number | null,
+): { connect: () => NetClient<TInput, TMsg, TSnapshot, TEvent>; step: () => void } {
   const { cb, register } = makeHostCallbacks<TInput, TMsg>()
 
   // Each connected local client's snapshot + event sinks, keyed by its player id.
@@ -37,10 +43,11 @@ export function createLoopbackHost<TInput, TMsg, TSnapshot, TEvent = never>(
   bindHost(host, handlers)
 
   let tick = 0
-  setInterval(() => {
+  const step = (): void => {
     tick++
     hostStep(host, handlers, tick)
-  }, tickMs)
+  }
+  if (tickMs !== null) setInterval(step, tickMs)
 
   // One local player = one NetClient bound to its own id.
   function connect(): NetClient<TInput, TMsg, TSnapshot, TEvent> {
@@ -63,5 +70,5 @@ export function createLoopbackHost<TInput, TMsg, TSnapshot, TEvent = never>(
     }
   }
 
-  return { connect }
+  return { connect, step }
 }
